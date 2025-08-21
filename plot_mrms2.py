@@ -9,9 +9,9 @@ from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 
 #recreate radarscope colortable for colormap
-# List of (dBZ, RGB) tuples from your `.pal`
+# List of (dBZ, RGBA) tuples 
 stops = [
-    (-15, (0, 0, 0)),
+    (-15, (0, 0, 0, 0)),
     (5, (29, 37, 60)),
     (17.5, (89, 155, 171)),
     (22.5, (33, 186, 72)),
@@ -39,7 +39,7 @@ normalized_stops = [
 radarscope_cmap = LinearSegmentedColormap.from_list("radarscope", normalized_stops)
 
 valid_time = 0
-def save_mrms_subset(bbox, output_path="mrms_subset.png"):
+def save_mrms_subset(bbox, output_path):
     """
     Fetches latest MRMS data, subsets it to a bounding box, 
     and saves it as a transparent PNG.
@@ -97,7 +97,7 @@ def save_mrms_subset(bbox, output_path="mrms_subset.png"):
 
     # 4. Customize and Plot Subset
     # Add ONLY state borders
-    ax.add_feature(cfeature.STATES.with_scale('50m'), linestyle=':', edgecolor='black')
+    ax.add_feature(cfeature.STATES.with_scale('50m'), linestyle='-', edgecolor='white')
 
     # Plot the SUBSET of reflectivity data
     im = ax.pcolormesh(
@@ -116,8 +116,10 @@ def save_mrms_subset(bbox, output_path="mrms_subset.png"):
         pad_inches=0              # Remove padding
     )
     valid_time = ds.time.dt.strftime('%Y-%m-%d %H:%M:%S UTC').item()
+    print(valid_time)
     plt.close(fig) # Close the figure to free up memory
-    os.remove("latest.grib2") # Clean up the downloaded file
+    os.remove("latest.grib2")
+    os.remove("latest.grib2.5b7b6.idx") # Clean up the downloaded files
     print("Done.")
 
 
@@ -129,5 +131,11 @@ if __name__ == '__main__':
         "lat_min": 38.522384,
         "lat_max": 40.155786
     }
+    test_bbox = {
+        "lon_min": -89,
+        "lon_max": -81,
+        "lat_min": 29.5,
+        "lat_max": 35.1
+    }
 
-    save_mrms_subset(bbox=cincy_bbox, output_path=f"ohio_mrms{valid_time}.png")
+    save_mrms_subset(test_bbox, 'mrms_stuff/test_ref')

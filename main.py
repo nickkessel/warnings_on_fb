@@ -124,7 +124,6 @@ def get_nws_alerts():
         print(f"Error fetching NWS alerts: {e}")
         return []
     
-print(FACEBOOK_PAGE_ID)
 def post_to_facebook(message, img_path): #message is string & img is https url reference to .jpg or .png
     if not img_path:
         print('no image path provided')
