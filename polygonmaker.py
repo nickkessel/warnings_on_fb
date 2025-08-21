@@ -19,6 +19,7 @@ import time
 from siphon.catalog import TDSCatalog
 import xarray as xr
 from colorama import Back, Fore, Style
+from plot_mrms2 import save_mrms_subset
 
 #reader = shpreader.Reader('countyl010g.shp')
 #counties = list(reader.geometries())
@@ -661,6 +662,12 @@ def plot_alert_polygon(alert, output_path):
         maxy += pad_y
         #scale = 0.2 #more is more zoomed out, less is more zoomed in #0.2-0.3 is probably ideal
         map_region = [minx, maxx, miny, maxy]
+        map_region2 = { #for the mrms stuff
+            "lon_min": minx,
+            "lon_max": maxx,
+            "lat_min": miny,
+            "lat_max": maxy
+        }
         #print(map_region)
         ax.set_extent(map_region)
         clip_box = ax.get_window_extent() #for the text on screen
@@ -673,7 +680,10 @@ def plot_alert_polygon(alert, output_path):
         
         #print(f'total cities available: {len(df_large)}')
         print(f'cities in view: {len(visible_cities_df)}')
-
+        #TESTING!!
+        radar_valid_time = save_mrms_subset(map_region2, 'mrms_stuff/test0.png')
+        
+        
         #plot cities
         fig.canvas.draw()
         text_candidates = []
@@ -743,7 +753,14 @@ def plot_alert_polygon(alert, output_path):
         ax.text(0.01, 0.95, f"Issued {formatted_issued_time} by {issuing_office}", 
                 transform=ax.transAxes, ha='left', va='bottom', 
                 fontsize=10, backgroundcolor="#eeeeeecc") #plotting this down here so it goes on top of city names
-
+        ax.text(0.85, 0.97, f"Radar data valid {radar_valid_time}", #radar time
+                transform=ax.transAxes, ha='left', va='bottom', 
+                fontsize=7, backgroundcolor="#eeeeeecc")
+        
+        #draw radar data in bg
+        mrms_img = mpimg.imread('mrms_stuff/test0.png') #need to update this to be a relative, changing location not a fixed 1!!!
+        ax.imshow(mrms_img, origin = 'upper', extent = map_region, transform = ccrs.PlateCarree(), zorder = 1)
+        
         # Draw the polygon
         if geom.geom_type == 'Polygon':
             if alert_type == "Severe Thunderstorm Warning":

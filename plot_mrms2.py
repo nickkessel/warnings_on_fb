@@ -117,10 +117,14 @@ def save_mrms_subset(bbox, output_path):
     )
     valid_time = ds.time.dt.strftime('%Y-%m-%d %H:%M:%S UTC').item()
     print(valid_time)
+    valid_time_short = ds.time.dt.strftime('%H:%M UTC').item()
+
+    
     plt.close(fig) # Close the figure to free up memory
     os.remove("latest.grib2")
     os.remove("latest.grib2.5b7b6.idx") # Clean up the downloaded files
     print("Done.")
+    return valid_time_short
 
 
 if __name__ == '__main__':

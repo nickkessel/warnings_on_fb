@@ -62,10 +62,10 @@ target_bbox = { #this is the area that is being scanned for alerts as well
         "lat_max": 39.664914
     } 
 test_bbox = {
-        "lon_min": -100.6,
-        "lon_max": -98.1,
-        "lat_min": 35.1,
-        "lat_max": 36.1
+        "lon_min": -96,
+        "lon_max": -93,
+        "lat_min": 31,
+        "lat_max": 33
 }
 
 warning_types = ["Tornado Warning", "Severe Thunderstorm Warning", "Flash Flood Warning"]
@@ -114,7 +114,7 @@ def get_nws_alerts():
                 )
                 return is_inside #true/false
 
-            if event_type in warning_types and any_point_in_bbox(geometry, target_bbox):
+            if event_type in warning_types and any_point_in_bbox(geometry, test_bbox):
                 print(f"Matching alert found: {event_type}, Zones: {affected_zones}")
                 filtered_alerts.append(alert)
 
@@ -166,40 +166,7 @@ def post_to_facebook(message, img_path): #message is string & img is https url r
     except requests.RequestException as e:
         print(Fore.RED + f"Error creating post: {e}" + Fore.RESET)
         print(Fore.RED + f"Response: {e.response.text}" + Fore.RESET)
-        
-    '''
-    if img:
-        #upload the photo (unpublished)
-        photo_upload_url = f"https://graph.facebook.com/{FACEBOOK_PAGE_ID}/photos"
-        photo_payload = {
-            "url": img,
-            "published":  "false",
-            "access_token": FACEBOOK_PAGE_ACCESS_TOKEN,
-        }
 
-        try:
-            photo_response = requests.post(photo_upload_url, data = photo_payload)
-            photo_response.raise_for_status()
-            photo_id = photo_response.json()["id"]
-            print(Fore.GREEN + "Uploaded image successfully" + Fore.RESET)
-        except requests.RequestException as e:
-            print(Fore.RED + f"Error upload img: {e}" + Fore.RESET)
-            return
-    #create post with msg and image already uploaded
-    post_url = f"https://graph.facebook.com/{FACEBOOK_PAGE_ID}/feed"
-    post_payload = {
-        "message": message,
-        "attached_media[0]": json.dumps({"media_fbid": photo_id}),
-        "access_token": FACEBOOK_PAGE_ACCESS_TOKEN,
-    }
-    try:
-        post_response = requests.post(post_url, data=post_payload)
-        post_response.raise_for_status()
-        print(Fore.GREEN + "Posted to Facebook successfully" + Fore.RESET)
-        
-    except requests.RequestException as e:
-        print(Fore.RED + f"Error posting to Facebook: {e}" + Fore.RESET)
-        '''
 
 #post_to_facebook("testing, testing", "https://plsn.com/site/wp-content/uploads/fig-2.-1920px-SMPTE_Color_Bars_16x9.png")
 
@@ -283,7 +250,7 @@ def main():
                 alert_path = f'graphics/alert_{awips_id}_{clean_alert_id}.png'
                 path, statement = plot_alert_polygon(alert, alert_path)
                 print(statement)
-                post_to_facebook(statement, alert_path)
+                #post_to_facebook(statement, alert_path)
                 posted_alerts.add(alert_id)
             elif alert_id in posted_alerts:
                 message = (
