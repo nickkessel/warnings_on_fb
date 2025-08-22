@@ -38,6 +38,29 @@ normalized_stops1 = [
 # Create the colormap
 radarscope_cmap = LinearSegmentedColormap.from_list("radarscope", normalized_stops1)
 
+#inches, (R G B)
+stops2 = [
+    (0.0,  (0, 0, 0, 0)),         
+    (0.01, (155, 255, 155, 255)), 
+    (0.5,  (0, 200, 0, 255)),     
+    (1.0,  (255, 255, 0, 255)),   
+    (2.0,  (255, 128, 0, 255)),   
+    (3.0,  (255, 0, 0, 255)),     
+    (4.5,  (150, 0, 75, 255)),    
+    (6.0,  (255, 0, 255, 255)),   
+]
+
+# Normalize dBZ values to 0–1 for matplotlib
+min_val2 = stops2[0][0]
+max_val2 = stops2[-1][0]
+normalized_stops2 = [
+    ((level - min_val2) / (max_val2 - min_val2), tuple(c/255 for c in color))
+    for level, color in stops2
+]
+
+# Create the colormap
+qpe_cmap = LinearSegmentedColormap.from_list("QPE", normalized_stops2)
+
 valid_time = 0
 def save_mrms_subset(bbox, type, output_path):
     """
@@ -59,10 +82,15 @@ def save_mrms_subset(bbox, type, output_path):
     if type == "Flash Flood Warning":
         url = qpe1_url
         print("QPE")
-        # set colormaps as well
+        cmap_to_use = qpe_cmap
+        vmin, vmax = min_val2, max_val2
+        cbar_label = "Radar Estimated Precipitation (1h)"
     else:
         url = ref_url
         print("REF")
+        cmap_to_use = radarscope_cmap
+        vmin, vmax = min_dbz1, max_dbz1
+        cbar_label = "Reflectivity (dBZ)"
 
     print(f"Fetching data from {url}")
     
@@ -111,13 +139,19 @@ def save_mrms_subset(bbox, type, output_path):
     # 4. Customize and Plot Subset
     # Add ONLY state borders
     ax.add_feature(cfeature.STATES.with_scale('50m'), linestyle='-', edgecolor='white')
-
-    # Plot the SUBSET of reflectivity data
+    
     im = ax.pcolormesh(
         subset.longitude, subset.latitude, subset.unknown,
         transform=ccrs.PlateCarree(),
-        cmap=radarscope_cmap, vmin=-15, vmax=95
+        cmap=cmap_to_use, vmin=vmin, vmax=vmax
     )
+
+    # Attach to the 'im' object, control size with shrink/aspect/pad
+    cbar = plt.colorbar(im, orientation='horizontal', pad=0.01, aspect=50, shrink=0.85)
+    cbar.set_label(cbar_label, color='white', fontsize=12, weight='bold')
+    #cbar.tick_params(colors='white')
+
+
 
     # 5. Save the Figure to a File
     print(f"Saving image to {output_path}...")
@@ -155,4 +189,4 @@ if __name__ == '__main__':
         "lat_max": 34.5
     }
 
-    save_mrms_subset(test_bbox, 'mrms_stuff/test_qpe')
+    save_mrms_subset(test_bbox, "Flash Flood Warning", 'mrms_stuff/test_qpe')
