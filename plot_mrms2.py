@@ -10,7 +10,7 @@ import numpy as np
 
 #recreate radarscope colortable for colormap
 # List of (dBZ, RGBA) tuples 
-stops = [
+stops1 = [
     (-15, (0, 0, 0, 0)),
     (5, (29, 37, 60)),
     (17.5, (89, 155, 171)),
@@ -28,18 +28,18 @@ stops = [
 ]
 
 # Normalize dBZ values to 0–1 for matplotlib
-min_dbz = stops[0][0]
-max_dbz = stops[-1][0]
-normalized_stops = [
-    ((level - min_dbz) / (max_dbz - min_dbz), tuple(c/255 for c in color))
-    for level, color in stops
+min_dbz1 = stops1[0][0]
+max_dbz1 = stops1[-1][0]
+normalized_stops1 = [
+    ((level - min_dbz1) / (max_dbz1 - min_dbz1), tuple(c/255 for c in color))
+    for level, color in stops1
 ]
 
 # Create the colormap
-radarscope_cmap = LinearSegmentedColormap.from_list("radarscope", normalized_stops)
+radarscope_cmap = LinearSegmentedColormap.from_list("radarscope", normalized_stops1)
 
 valid_time = 0
-def save_mrms_subset(bbox, output_path):
+def save_mrms_subset(bbox, type, output_path):
     """
     Fetches latest MRMS data, subsets it to a bounding box, 
     and saves it as a transparent PNG.
@@ -47,10 +47,23 @@ def save_mrms_subset(bbox, output_path):
     Args:
         bbox (dict): A dictionary with keys 'lon_min', 'lon_max', 
                      'lat_min', 'lat_max'.
+        type (str): The type of warning. This'll generate a different image & colormap
+                     for a svr/tor (reflectivity) vs ffw (QPE). Pass in full names
         output_path (str): The path to save the output PNG file.
     """
     # 1. Download and Decompress (same as before)
-    url = "https://mrms.ncep.noaa.gov/2D/ReflectivityAtLowestAltitude/MRMS_ReflectivityAtLowestAltitude.latest.grib2.gz"
+    ref_url = "https://mrms.ncep.noaa.gov/2D/ReflectivityAtLowestAltitude/MRMS_ReflectivityAtLowestAltitude.latest.grib2.gz"
+    qpe_url = "https://mrms.ncep.noaa.gov/2D/MultiSensor_QPE_03H_Pass1/MRMS_MultiSensor_QPE_03H_Pass1.latest.grib2.gz" #pass 1 seems to be updated sooner, could try and implement choosing diff. one depending on when alert is being generated
+    qpe1_url = "https://mrms.ncep.noaa.gov/2D/RadarOnly_QPE_01H/MRMS_RadarOnly_QPE_01H.latest.grib2.gz" #seems to be updated much quicker than the other product
+    
+    if type == "Flash Flood Warning":
+        url = qpe1_url
+        print("QPE")
+        # set colormaps as well
+    else:
+        url = ref_url
+        print("REF")
+
     print(f"Fetching data from {url}")
     
     try:
@@ -136,10 +149,10 @@ if __name__ == '__main__':
         "lat_max": 40.155786
     }
     test_bbox = {
-        "lon_min": -89,
-        "lon_max": -81,
-        "lat_min": 29.5,
-        "lat_max": 35.1
+        "lon_min": -82,
+        "lon_max": -78,
+        "lat_min": 32,
+        "lat_max": 34.5
     }
 
-    save_mrms_subset(test_bbox, 'mrms_stuff/test_ref')
+    save_mrms_subset(test_bbox, 'mrms_stuff/test_qpe')
