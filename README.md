@@ -41,6 +41,15 @@
 - No support of Guam
     - No dataset for Guam cities
     - Issues with plotting MRMS data on Guam domain
+## Running It:
+- download the latest release (wheel)
+- create a new virtual environment
+- activate the virtual environment
+- duplicate an existing config file, adjust settings to your domain/needs, set warnings to target
+- create a .env with a FACEBOOK_PAGE_ACCESS_TOKEN, FACEBOOK_PAGE_ID, IG_USER, IG_PASS, if you want alerts to be sent to those places
+- rename the config file to something relevant to your use, keep it in the /configs folder.
+- run  `python -m insta_alert.main --config {YOUR_CONFIG_NAME}`
+- enjoy!
 ## Tools Used:
 ```python
  metpy, matplotlib, shapely, cartopy, geopandas, datetime, time, timezonefinder,
