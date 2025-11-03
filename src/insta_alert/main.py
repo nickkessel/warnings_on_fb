@@ -1,32 +1,34 @@
-from colorama import Fore, Back, Style
 import time, datetime
+from colorama import Fore, Back, Style
 load_time = time.time()
-print(Back.LIGHTWHITE_EX + Fore.BLACK + 'Load 1' + Fore.RESET + Back.RESET)
 from shapely.geometry import shape
 import requests
 import json
-print(Back.LIGHTWHITE_EX + Fore.BLACK + 'Load 2' + Fore.RESET + Back.RESET)
 import re
+print(Back.LIGHTWHITE_EX + Fore.BLACK + 'Load 1' + Fore.RESET + Back.RESET)
 import os
 from dotenv import load_dotenv
-print(Back.LIGHTWHITE_EX + Fore.BLACK + 'Load 3' + Fore.RESET + Back.RESET)
 import threading #slideshow
 import queue #slideshow
 from .integrations.instagram import  make_instagram_post, instagram_login
+print(Back.LIGHTWHITE_EX + Fore.BLACK + 'Load 2' + Fore.RESET + Back.RESET)
 from .integrations.discord import log_to_discord
 from .integrations.facebook import post_to_facebook
 from .gfx_tools.watch_attributes import get_watch_attributes, get_watch_number
 from .utils.logging import load_posted_alerts, save_posted_alert
 from .utils.error_handler import report_error
+print(Back.LIGHTWHITE_EX + Fore.BLACK + 'Load 3' + Fore.RESET + Back.RESET)
 import ijson
 import gzip
-load_dotenv()
+import argparse
+import insta_alert.config_manager as config_manager
 load_done_time = time.time() - load_time
 print(Back.GREEN + Fore.BLACK + f'Base imports imported succesfully {load_done_time:.2f}s' + Fore.RESET + Back.RESET)
 
-import argparse
-import insta_alert.config_manager as config_manager
-
+if load_dotenv():
+    print(Back.GREEN + Fore.RESET + '.env file loaded successfully' + Back.RESET)
+else:
+    print(Back.RED + f'Could not load .env file. Script will still run, but some functionalities might fail. ' + Back.RESET)
 
 #CHANGES: Added Discord Webhook sending support; Added toggles to enable/disable sending to Facebook/Discord; Added toggle to enable/disable use of test bbox; Moved the DAMN colorbar;
 #(cont.) Added preliminary support for SPS/SMW; Wording changes; PDS box changes for readability; Added more hazards to hazard box; Added more pop-ups utilizing PDS box system; -DK
@@ -234,7 +236,11 @@ def are_alerts_different(new_alert, ref_alert):
             print("Affected zones (UGC) are the same. This is a duplicate update.")
             return False, ''
         else:
-            if alert_type in ['Freeze Warning', 'Frost Advisory']: #have been having issues with these posting too much, not super important, so just won't post continuations
+            description = new_alert['properties'].get('description', None)
+            if description == None:
+                print('Description empty, expired.')
+                return False, ''
+            elif alert_type in ['Freeze Warning', 'Frost Advisory']: #have been having issues with these posting too much, not super important, so just won't post continuations
                 #print('Different UGC, but not posting due to issues with Freeze/Frost zones and posting too much.')
                 return False, ''
             else:
@@ -253,10 +259,14 @@ def check_if_alert_is_valid(alert):
     Returns True if the alert is valid for posting, False otherwise.
     """
     properties = alert.get("properties", {})
+    parameters = properties.get('parameters', {})
     raw_desc = properties.get('description') or ''
-    awips_id = properties['parameters'].get('AWIPSidentifier', ['ERROR'])[0]
+    headline_list = parameters.get('NWSheadline')
+    raw_head = (headline_list[0] if headline_list else None) or 'Dummy text.'
+    awips_id = parameters.get('AWIPSidentifier', ['ERROR'])[0]
     event_type = properties.get("event")
     clickable_alert_id = properties.get("@id")
+    #print(f'check is vlaid{raw_desc}{raw_head}')
     
     # SVR/SVS cancellation check (if wind and hail are both n/a, it's a cancellation)
     if awips_id.startswith("SV"):
@@ -274,10 +284,13 @@ def check_if_alert_is_valid(alert):
             return False
     
     #any other case, if desc text has something along the line of "will allow the Frost Advisory to expire" or "Flood watch will be allowed to expire"
-    if event_type not in ['Severe Thunderstorm Warning', 'Flash Flood Warning'] and raw_desc is not None and len(raw_desc) > 2:
+    if event_type not in ['Severe Thunderstorm Warning', 'Flash Flood Warning']:# and raw_desc is not None and len(raw_desc) > 2:
         description_text = ' '.join(raw_desc.split()).lower()
-        expired_pattern = r"(?i)\b(?:allow(?:ed|s)?(?: the [a-z ]+?)?|the [a-z ]+?(?: will(?: be)?(?: allowed to)?)?|the threat(?: for [a-z ]+?)?)\s+(?:expire(?: at \d{1,2}(?::\d{2})?\s?(?:am|pm))?|has ended)\b"        
-        expired_match = re.search(expired_pattern, description_text)
+        headline_text = ' '.join(raw_head.split()).lower()
+        product_text = description_text + headline_text
+        #print(product_text)
+        expired_pattern = r"(?i)\b(?:(?:allow(?:ed|s)?(?: the [a-z ]+?)?)|(?:the |)(?:[a-z ]+?)(?: will(?: be)?(?: allowed to)?)?|the threat(?: for [a-z ]+?)?)\s+(?:expire(?: at \d{1,2}(?::\d{2})?\s?(?:am|pm))?|has ended)\b"        
+        expired_match = re.search(expired_pattern, product_text)
         if expired_match:
             print(Fore.RED + f'Check failed, {event_type} expired (Regex fail)! {clickable_alert_id}' + Fore.RESET)
             return False
@@ -345,7 +358,7 @@ def main():
         alerts_stack = []
         if IS_TESTING:
             print(Back.YELLOW + Fore.BLACK + "--- RUNNING IN TEST MODE ---" + Back.RESET)
-            with open('test_alerts/spstesttext.json', 'r') as f:
+            with open('test_alerts/expiredfog.json', 'r') as f:
                 alerts_stack = [json.load(f)]
         else:
             alerts_stack = get_nws_alerts(warning_types)

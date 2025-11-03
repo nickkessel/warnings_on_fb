@@ -6,7 +6,9 @@ WINTER = ['Winter Storm Warning', 'Frost Advisory', 'Freeze Warning', 'Snow Squa
 WATCHES = ['Tornado Watch', 'Severe Thunderstorm Watch', 'Flood Watch', 'Flash Flood Watch']
 
 ALL = SEVERE + OTHER + WINTER + WATCHES
-
+# --- ERRORS ----
+DISCORD_PINGS_ALL = ['1427050976732254300'] #role to mention for all errors
+ERROR_WEBHOOK = 'https://discord.com/api/webhooks/1427040206476808334/N3MzXEbasGKIcFcQ5bJZtQ3sExmzGp1Z-lFBxXXbK2MGe7FkdQtphwR0qleTP8lejZkn'
 # ---- ALERT COLORS ----
 ALERT_COLORS = {
     "Severe Thunderstorm Warning": {
