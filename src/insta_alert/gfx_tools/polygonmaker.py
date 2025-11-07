@@ -296,9 +296,12 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
             region = 'GU'
         else:
             region = 'US'
-            
-        use_snow_cmap = is_alert_winter(alert, centerlat, centerlon) #pass center lat/lon now so we dont have to do the same calc twice
-            
+        try:
+            use_snow_cmap = is_alert_winter(alert, centerlat, centerlon) #pass center lat/lon now so we dont have to do the same calc twice
+        except Exception as e:
+            print(Fore.RED + f"Error checking for winter product! {e}" + Fore.RESET)
+            use_snow_cmap = False
+
         if mrms_plot == True:
             subset, cmap, vmin, vmax, cbar_label, radar_valid_time = get_mrms_data_async(map_region2, alert_type, region, use_snow_cmap)
             #directly plot the MRMS data onto the main axes (and colorbar, seperately)
@@ -448,8 +451,13 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         # Draw the polygon
         draw_alert_shape(ax, geom, colors)
         #box to show info about hazards like hail/wind if applicable, also get tags for the pdsBox
-        details_text_lines, torSeverity, tStormSeverity, floodSeverity, torDetection, waterspoutDetection = get_hazard_details(alert, geom_type)
-        details_text = "\n".join(details_text_lines)
+        try:
+            details_text_lines, torSeverity, tStormSeverity, floodSeverity, torDetection, waterspoutDetection = get_hazard_details(alert, geom_type)
+            details_text = "\n".join(details_text_lines)
+        except Exception as e:
+            print(Fore.RED + f'An error occurred while generating the details text: {e}' + Fore.RESET)
+            
+        
         
         #shrink fontsize if there are more than 3 things in the detailstext infobox (rare but i've seen it)
         if details_text_lines:
@@ -545,8 +553,12 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         else: 
             punc = "."
         statement = f'''{alert_type} {alert_verb}, including {area_desc}{punc} This alert is in effect until {formatted_expiry_time}{punc}\n{desc} '''
-        if config.USE_TAGS:
-            statement += config.DEFAULT_TAGS
+        try: #handles if there isn't a config file
+            if config.USE_TAGS:
+                statement += config.DEFAULT_TAGS
+        except Exception as e:
+            print(Fore.YELLOW + f"No config file found, or no tags defined: {e}. Not using tags." + Fore.RESET)
+
         #print(statement)
         elapsed_plot_time = time.time() - plot_start_time
         elapsed_total_time = time.time() - start_time
@@ -561,7 +573,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         gc.collect()
 
 if __name__ == '__main__': 
-    with open('test_alerts/spstesttext.json', 'r') as file: 
+    with open('test_alerts/expiredfog.json', 'r') as file: 
         print(Back.YELLOW + Fore.BLACK + 'testing mode! (local files)' + Style.RESET_ALL)
         test_alert = json.load(file) 
-    plot_alert_polygon(test_alert, 'graphics/test/text1', True, 'issued')
+    plot_alert_polygon(test_alert, 'graphics/test/headline', False, 'issued')

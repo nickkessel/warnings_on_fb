@@ -1,6 +1,7 @@
 import re
 import json
 from colorama import Fore, Back
+import textwrap
 if __name__ == '__main__': #handle for different places the script is called from
     from watch_attributes import get_watch_attributes, get_watch_number
     #from get_alert_geometry import get_alert_geometry
@@ -175,7 +176,12 @@ def get_hazard_details(alert, geom_type):
         if alert_type == 'Special Weather Statement' and geom_type == 'zone':
             #print('regexing SPS for more infos')
             specific_hazard_found = False
-            description_text = alert['properties'].get('description', '').lower()
+            raw_desc = alert['properties'].get('description') or ''
+            print(raw_desc)
+            if raw_desc is not None: 
+                description_text = raw_desc.lower()
+            else:
+                description_text = " "
             headline_text = alert['properties']['parameters'].get('NWSheadline', [''])[0]
             search_text = description_text + ' ' + headline_text
 
@@ -194,7 +200,6 @@ def get_hazard_details(alert, geom_type):
             if re.search(fog_regex, search_text, re.IGNORECASE):
                 denseFogThreat = "Likely"
                 specific_hazard_found = True
-
             if re.search(ice_regex, search_text, re.IGNORECASE):
                 iceThreat = "Possible Across the Area"
                 specific_hazard_found = True
@@ -211,6 +216,13 @@ def get_hazard_details(alert, geom_type):
             if not specific_hazard_found:
                 if headline_text:
                     additionalHazard = headline_text
+                    max_line_chars = 50
+                    if len(additionalHazard) > max_line_chars:
+                        # use textwrap.fill to wrap at spaces, not mid-word
+                        additionalHazard = textwrap.fill(additionalHazard, 
+                                                         width=max_line_chars, 
+                                                         break_long_words=False)
+                        print(additionalHazard)
                 else:
                     additionalHazard = 'See Statement for Details'          
 
@@ -260,32 +272,54 @@ def get_hazard_details(alert, geom_type):
             ('Max. Wind Gusts', hwwGust, ' MPH')
         ]
         
-        
         details_text_lines = []
         for label, value, suffix in hazard_details:
-            if value != "n/a" and value != 'n/a - n/a' and value != '0.00': #second one is for the watch probs if there aren't any #third is for hail
-                # Escape any spaces in the value for LaTeX rendering
-                escaped_value = str(value).replace(" ", r"\ ")
+            if value != "n/a" and value != 'n/a - n/a' and value != '0.00':
                 
-                # Start the LaTeX string with the bolded value and its unit/suffix
-                # Example: $\bf{1.25in}
-                formatted_string = f"$\\bf{{{escaped_value}{suffix}}}"
+                # special handling for the multi-line 'Hazard' string
+                if label == 'Hazard':
+                    # 1. split the pre-wrapped string
+                    lines = str(value).split('\n')
+                    
+                    # 2. add the first line with the label
+                    if lines:
+                        # *FIX*: escape spaces and use \mathbf
+                        line_with_spaces = lines[0].replace(" ", r"\ ")
+                        first_line_formatted = f"$\\mathbf{{{line_with_spaces}}}$"
+                        details_text_lines.append(f"{label}: {first_line_formatted}")
+                    
+                    # 3. add all subsequent lines, indented
+                    if len(lines) > 1:
+                        padding = "      " 
+                        for line in lines[1:]:
+                            # *FIX*: escape spaces (in padding AND text) and use \mathbf
+                            indented_line = padding + line
+                            line_with_spaces = indented_line.replace(" ", r"\ ")
+                            formatted_line = f"$\\mathbf{{{line_with_spaces}}}$"
+                            details_text_lines.append(formatted_line)
+                            
+                    # 4. skip the default append at the end
+                    continue
                 
-                # Check if the 'OBSERVED' tag is needed for this specific hazard
-                is_observed = False
-                if label == 'Max. Wind Gusts' and windObserved == 'OBSERVED':
-                    is_observed = True
-                elif label == 'Max. Hail Size' and hailObserved == 'OBSERVED':
-                    is_observed = True
+                # --- End of new approach ---
                 
-                if is_observed:
-                    # If observed, add a space and the italicized tag
-                    # Example: \ \mathit{(OBSERVED)}
-                    formatted_string += r"\ \mathit{(observed)}"
-
-                # Close the LaTeX math string
-                formatted_string += "$"
-                
+                # standard handling for all other single-line values
+                else:
+                    escaped_value = str(value).replace(" ", r"\ ")
+                    formatted_string = f"$\\bf{{{escaped_value}{suffix}}}"
+                    
+                    is_observed = False
+                    if label == 'Max. Wind Gusts' and windObserved == 'OBSERVED':
+                        is_observed = True
+                    elif label == 'Max. Hail Size' and hailObserved == 'OBSERVED':
+                        is_observed = True
+                    
+                    if is_observed:
+                        formatted_string = formatted_string.rstrip("$")
+                        formatted_string += r"\ \mathit{(observed)}"
+                    formatted_string += "$"
+                print(formatted_string)
+                # default append for all non-Hazard items
                 details_text_lines.append(f"{label}: {formatted_string}")
         print(Fore.LIGHTBLUE_EX + "Successfully scanned alert text for attributes." + Fore.RESET)
         return details_text_lines, torSeverity, tStormSeverity, floodSeverity, torDetection, waterspoutDetection
