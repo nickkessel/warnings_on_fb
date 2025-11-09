@@ -4,9 +4,9 @@
 from insta_alert.utils.constants import SEVERE, WATCHES, WINTER, OTHER, ALL
 
 ALERT_TYPES_TO_MONITOR = (
-    ALL
+    'Winter Weather Advisory'
 )
-LOG_FILE = 'logs/posted_alerts_test1.log'
+LOG_FILE = 'logs/posted_alerts_test2.log'
 # --- BOUNDING ZONES --- 
 #use https://api.weather.gov/zones?type=county search to find county codes. best source.
 
@@ -21,7 +21,7 @@ ACTIVE_ZONES = CINCY_ZONES #counties are w/ a C, marine zones w/ a Z
 
 # --- TARGETS ---
 # Set to True to enable posting, False to disable
-OUTPUT_DIR = 'graphics/live-test' #should be graphics/something
+OUTPUT_DIR = 'graphics/live-test/wwa' #should be graphics/something
 POST_TO_FACEBOOK = False
 POST_TO_DISCORD = False
 POST_TO_INSTAGRAM_GRID = False

@@ -2,7 +2,7 @@
 # ---- ALERT TYPES ----
 SEVERE = ['Tornado Warning', 'Severe Thunderstorm Warning', 'Flash Flood Warning']
 OTHER = ['Special Weather Statement', 'Flood Advisory', 'Special Marine Warning', 'Dust Storm Warning', 'Dense Fog Advisory', 'High Wind Warning', 'Red Flag Warning']
-WINTER = ['Winter Storm Warning', 'Frost Advisory', 'Freeze Warning', 'Snow Squall Warning', 'Lake Effect Snow Warning']
+WINTER = ['Winter Storm Warning', 'Frost Advisory', 'Freeze Warning', 'Snow Squall Warning', 'Winter Weather Advisory','Lake Effect Snow Warning', 'Blizzard Warning', 'Winter Storm Watch']
 WATCHES = ['Tornado Watch', 'Severe Thunderstorm Watch', 'Flood Watch', 'Flash Flood Watch']
 
 ALL = SEVERE + OTHER + WINTER + WATCHES
@@ -104,6 +104,21 @@ ALERT_COLORS = {
     'Lake Effect Snow Warning': {
         'facecolor': "#22A9A9",
         'edgecolor': '#008B8B',
+        'fillalpha': '50'
+    },
+    'Blizzard Warning': {
+        'facecolor': "#FF5F25",
+        'edgecolor': "#FF4500",
+        'fillalpha': '50'
+    },
+    'Winter Storm Watch': {
+        'facecolor': "#4682B4",
+        'edgecolor': '#4682B4',
+        'fillalpha': '50'
+    },
+    'Winter Weather Advisory': {
+        'facecolor': "#8875F0",
+        'edgecolor': "#755EF5",
         'fillalpha': '50'
     },
     "default": {

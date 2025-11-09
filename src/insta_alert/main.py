@@ -313,7 +313,7 @@ def main():
     slideshow_queue = None
     if config.SEND_TO_SLIDESHOW:
         slideshow_queue = queue.Queue()
-        from integrations.slideshow import run_slideshow
+        from insta_alert.integrations.slideshow import run_slideshow
         slideshow_thread = threading.Thread(
             target=run_slideshow, args=(slideshow_queue,), daemon=True
         )
