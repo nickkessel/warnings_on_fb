@@ -4,7 +4,10 @@ import os
 from colorama import Fore, Back, Style
 from PIL import Image, ImageOps
 import json
-load_dotenv()
+from pathlib import Path
+cwd = Path(os.getcwd())
+env_path = cwd / ".env"
+load_dotenv(env_path)
 
 SESSION_FILE = "session.json"
 

@@ -10,6 +10,7 @@ import os
 from dotenv import load_dotenv
 import threading #slideshow
 import queue #slideshow
+from pathlib import Path
 from .integrations.instagram import  make_instagram_post, instagram_login
 print(Back.LIGHTWHITE_EX + Fore.BLACK + 'Load 2' + Fore.RESET + Back.RESET)
 from .integrations.discord import log_to_discord
@@ -25,7 +26,10 @@ import insta_alert.config_manager as config_manager
 load_done_time = time.time() - load_time
 print(Back.GREEN + Fore.BLACK + f'Base imports imported succesfully {load_done_time:.2f}s' + Fore.RESET + Back.RESET)
 
-if load_dotenv():
+cwd = Path(os.getcwd())
+print(cwd)
+env_path = cwd / ".env"
+if load_dotenv(env_path):
     print(Back.GREEN + Fore.RESET + '.env file loaded successfully' + Back.RESET)
 else:
     print(Back.RED + f'Could not load .env file. Script will still run, but some functionalities might fail. ' + Back.RESET)
@@ -401,6 +405,7 @@ def main():
             awips_id = properties['parameters'].get('AWIPSidentifier', ['ERROR'])[0]
             clickable_alert_id = properties.get("@id")
             expiry_time_iso = properties.get("expires")
+            end_time_iso = properties.get("ends") #not sure what the diff is here, but end_time seems to better match product text?
             clean_alert_id = clean_filename(alert_id)
             
             # Check for upgrades or significant changes
@@ -421,7 +426,7 @@ def main():
                 except Exception as e:
                     print(Fore.RED + f"Error processing reference for {clickable_alert_id}: {e}" + Fore.RESET)
             
-            if ref_check_passed:
+            if ref_check_passed: #ref_check_passed
                 print(Fore.LIGHTBLUE_EX + f"Processing graphics for {alert_verb} alert: {clickable_alert_id}" + Fore.RESET)
                 alert_path = f'{config.OUTPUT_DIR}/alert_{awips_id}_{clean_alert_id}.png'
                 properties = alert.get("properties", {})
@@ -438,11 +443,12 @@ def main():
                         
                     path, statement = plot_alert_polygon(alert, alert_path, plot_mrms, alert_verb)
                     if path and statement:  # Ensure plotting was successful
-                        if config.SEND_TO_SLIDESHOW and expiry_time_iso:
-                            slideshow_queue.put((path, expiry_time_iso))
+                        if config.SEND_TO_SLIDESHOW and end_time_iso:
+                            slideshow_queue.put((path, end_time_iso))
                         if config.POST_TO_FACEBOOK:
                             post_to_facebook(statement, alert_path)
                         if config.POST_TO_DISCORD:
+                            #print(config.WEBHOOKS)
                             log_to_discord(statement, alert_path, config.WEBHOOKS)
                         if config.POST_TO_INSTAGRAM_GRID:
                             make_instagram_post(statement, alert_path, 'grid', ig_client)

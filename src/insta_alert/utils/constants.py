@@ -1,4 +1,10 @@
 #stuff that remains constant across all configs
+from dotenv import load_dotenv
+import os
+from pathlib import Path
+cwd = Path(os.getcwd())
+env_path = cwd / ".env"
+load_dotenv(env_path)
 # ---- ALERT TYPES ----
 SEVERE = ['Tornado Warning', 'Severe Thunderstorm Warning', 'Flash Flood Warning']
 OTHER = ['Special Weather Statement', 'Flood Advisory', 'Special Marine Warning', 'Dust Storm Warning', 'Dense Fog Advisory', 'High Wind Warning', 'Red Flag Warning']
@@ -8,8 +14,7 @@ WATCHES = ['Tornado Watch', 'Severe Thunderstorm Watch', 'Flood Watch', 'Flash F
 ALL = SEVERE + OTHER + WINTER + WATCHES
 # --- ERRORS ----
 DISCORD_PINGS_ALL = ['1427050976732254300'] #role to mention for all errors
-ERROR_WEBHOOK = 'https://discord.com/api/webhooks/1427040206476808334/N3MzXEbasGKIcFcQ5bJZtQ3sExmzGp1Z-lFBxXXbK2MGe7FkdQtphwR0qleTP8lejZkn'
-# ---- ALERT COLORS ----
+ERROR_WEBHOOK = os.getenv("ERROR_WEBHOOK")
 ALERT_COLORS = {
     "Severe Thunderstorm Warning": {
         "facecolor": "#ffff00", # yellow

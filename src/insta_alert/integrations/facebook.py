@@ -3,7 +3,10 @@ from colorama import Fore, Back
 import requests
 import json
 import os
-load_dotenv()
+from pathlib import Path
+cwd = Path(os.getcwd())
+env_path = cwd / ".env"
+load_dotenv(env_path)
 
 FACEBOOK_PAGE_ACCESS_TOKEN = os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN")
 FACEBOOK_PAGE_ID = os.getenv("FACEBOOK_PAGE_ID")

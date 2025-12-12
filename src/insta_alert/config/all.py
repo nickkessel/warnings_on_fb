@@ -2,6 +2,12 @@
 # --- API POLLING SETTINGS ---
 # Define categories for alert types
 from insta_alert.utils.constants import SEVERE, WATCHES, WINTER, OTHER, ALL
+from dotenv import load_dotenv
+import os
+from pathlib import Path
+cwd = Path(os.getcwd())
+env_path = cwd / ".env"
+load_dotenv(env_path)
 
 ALERT_TYPES_TO_MONITOR = (
     ALL
@@ -30,10 +36,7 @@ POST_TO_INSTAGRAM_STORY = False
 SEND_TO_SLIDESHOW = False 
 # A list of Discord webhook URLs to send alerts to
 DISCORD_PINGS_ALL = ['1427050976732254300'] #role to mention for all errors
-ERROR_WEBHOOK = 'https://discord.com/api/webhooks/1427040206476808334/N3MzXEbasGKIcFcQ5bJZtQ3sExmzGp1Z-lFBxXXbK2MGe7FkdQtphwR0qleTP8lejZkn'
-new_logs = 'https://discord.com/api/webhooks/1410375879305068605/KozzDWwx4tZGqOZFf5iUzw7bdXviILfgwkz1ggh0ujDlHjOWT9U_GnoCtklzWt7JPQaU'
-cincy_wx = 'https://discord.com/api/webhooks/1419354620676804748/womab2v6YAhHcNoVtpq3USTqBbJ4uuA0O9vgWWnjo4UmIj-Wcz_EZ4VpJwEGmnX-Z5P7'
-WEBHOOKS = [new_logs]
+WEBHOOKS = [os.getenv("ALL_DISCORD_WEBHOOK")]
 
 # --- CAPTION ---
 DEFAULT_TAGS = '#weather #weatheralert #stayalert #wx'

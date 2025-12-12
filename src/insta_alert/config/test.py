@@ -2,7 +2,12 @@
 # --- API POLLING SETTINGS ---
 # Define categories for alert types
 from insta_alert.utils.constants import SEVERE, WATCHES, WINTER, OTHER, ALL
-
+from dotenv import load_dotenv
+import os
+from pathlib import Path
+cwd = Path(os.getcwd())
+env_path = cwd / ".env"
+load_dotenv(env_path)
 ALERT_TYPES_TO_MONITOR = (
     'Winter Weather Advisory'
 )
@@ -21,16 +26,15 @@ ACTIVE_ZONES = CINCY_ZONES #counties are w/ a C, marine zones w/ a Z
 
 # --- TARGETS ---
 # Set to True to enable posting, False to disable
-OUTPUT_DIR = 'graphics/live-test/wwa' #should be graphics/something
+OUTPUT_DIR = 'graphics/live-test' #should be graphics/something
 POST_TO_FACEBOOK = False
-POST_TO_DISCORD = False
+POST_TO_DISCORD = True #I HAVE TO CREATE NEW WEBHOOKS AND REPLACE THEM I THINK
 POST_TO_INSTAGRAM_GRID = False
 POST_TO_INSTAGRAM_STORY = False
 SEND_TO_SLIDESHOW = False 
 # A list of Discord webhook URLs to send alerts to
 
-new_logs = 'https://discord.com/api/webhooks/1410375879305068605/KozzDWwx4tZGqOZFf5iUzw7bdXviILfgwkz1ggh0ujDlHjOWT9U_GnoCtklzWt7JPQaU'
-cincy_wx = 'https://discord.com/api/webhooks/1419354620676804748/womab2v6YAhHcNoVtpq3USTqBbJ4uuA0O9vgWWnjo4UmIj-Wcz_EZ4VpJwEGmnX-Z5P7'
+new_logs = os.getenv("ALL_DISCORD_WEBHOOK")
 WEBHOOKS = [new_logs]
 
 # --- CAPTION ---

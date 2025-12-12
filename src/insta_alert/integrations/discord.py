@@ -8,7 +8,7 @@ def log_to_discord(message, img_path, webhooks):
         with open(img_path, 'rb') as f:
             webhook.add_file(file=f.read(), filename='Alert.png')
         try:
-            print(Fore.GREEN + f"Sent to Discord webhook {hook} successfully!" + Fore.RESET)
+            print(Fore.GREEN + f"Sent to Discord webhook successfully!" + Fore.RESET)
             response = webhook.execute()
         except Exception as e:
             print(Fore.RED + f"Error sending to webhook! {e}" + Fore.RESET)

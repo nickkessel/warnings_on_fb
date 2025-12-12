@@ -168,7 +168,9 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
     try:
         #print(geom)
         alert_type = alert['properties'].get("event") #tor, svr, ffw, etc
-        expiry_time = alert['properties'].get("expires") #raw time thing need to format to time
+        end_time = alert['properties'].get('ends') if alert['properties'].get('ends') is not None else alert['properties'].get('expires')
+        #expiry_time = alert['properties'].get("expires") #raw time thing need to format to time
+        #end_time = alert['properties'].get("ends") #again not sure how this differs from expiry but TODO: figure that out TODO: sometimes ts is null, uhhh fix that to fallback to expiry time
         issued_time = alert['properties'].get("sent")
         issuing_office = alert['properties'].get("senderName")
         
@@ -180,23 +182,23 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
             alert_tz = pytz.timezone(timezone_str)
             
             dt_sent = datetime.fromisoformat(issued_time).astimezone(alert_tz)
-            dt_expires = datetime.fromisoformat(expiry_time).astimezone(alert_tz)
+            dt_expires = datetime.fromisoformat(end_time).astimezone(alert_tz)
         
             formatted_issued_time = dt_sent.strftime("%I:%M %p %Z")
-            formatted_expiry_time = dt_expires.strftime("%B %d, %I:%M %p %Z")
-            print("now plotting: " + alert_type + " issued " + formatted_issued_time + " expires " + formatted_expiry_time )
+            formatted_end_time = dt_expires.strftime("%B %d, %I:%M %p %Z")
+            print("now plotting: " + alert_type + " issued " + formatted_issued_time + " expires " + formatted_end_time  )
         except Exception as e:
             print(Back.YELLOW + f'error getting timezone: [{e}] defaulting to UTC' + Back.RESET)
         
             #time formatting (old)
-            dt = datetime.fromisoformat(expiry_time)
+            dt = datetime.fromisoformat(end_time)
             eastern = pytz.timezone("GMT")
             dt_eastern = dt.astimezone(eastern)
-            formatted_expiry_time = dt_eastern.strftime("%B %d, %I:%M %p %Z")
+            formatted_end_time = dt_eastern.strftime("%B %d, %I:%M %p %Z")
             dt1 = datetime.fromisoformat(issued_time)
             dt1_eastern = dt1.astimezone(eastern)
             formatted_issued_time = dt1_eastern.strftime("%I:%M %p %Z")
-            print("now plotting:" + alert_type + " issued " + formatted_issued_time + " expires " + formatted_expiry_time )
+            print("now plotting:" + alert_type + " issued " + formatted_issued_time + " expires " + formatted_end_time )
         
         #plot setup
         minx, _, maxx, _ = geom.bounds #ignore the lat, as its not relevant here
@@ -207,10 +209,10 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
 
         if alert_verb == 'upgraded':
             # Use the pre-formatted variable in the title string.
-            ax.set_title(fr"$\mathbf{{{formatted_alert_type}}}$" + " -" + fr" $\mathit{{{alert_verb.capitalize()}!}}$" + "\n" + f"expires {formatted_expiry_time}", fontsize=14, loc='left') #latex/math formatting is also beyond me. ALSO the exclamation point wont be italicized because the default MPL font just straight up doesnt have a glyph for it and the workaround seems way worse than what its at now
+            ax.set_title(fr"$\mathbf{{{formatted_alert_type}}}$" + " -" + fr" $\mathit{{{alert_verb.capitalize()}!}}$" + "\n" + f"expires {formatted_end_time}", fontsize=14, loc='left') #latex/math formatting is also beyond me. ALSO the exclamation point wont be italicized because the default MPL font just straight up doesnt have a glyph for it and the workaround seems way worse than what its at now
         else:
             # Also use the pre-formatted variable here.
-            ax.set_title(fr"$\mathbf{{{formatted_alert_type}}}$" + "\n" + f"expires {formatted_expiry_time}", fontsize=14, loc='left')  #dont really need a verb if it is not upgraded i dont think
+            ax.set_title(fr"$\mathbf{{{formatted_alert_type}}}$" + "\n" + f"expires {formatted_end_time}", fontsize=14, loc='left')  #dont really need a verb if it is not upgraded i dont think
 
         counties_gdf.plot(ax=ax, transform=ccrs.PlateCarree(), edgecolor='#9e9e9e', facecolor='none', linewidth=0.75, zorder=2) 
         states_gdf.plot(ax=ax, transform=ccrs.PlateCarree(), edgecolor='black', facecolor='none', linewidth=1.5, zorder=2)
@@ -552,7 +554,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
             punc = "!"
         else: 
             punc = "."
-        statement = f'''{alert_type} {alert_verb}, including {area_desc}{punc} This alert is in effect until {formatted_expiry_time}{punc}\n{desc} '''
+        statement = f'''{alert_type} {alert_verb}, including {area_desc}{punc} This alert is in effect until {formatted_end_time}{punc}\n{desc} '''
         try: #handles if there isn't a config file
             if config.USE_TAGS:
                 statement += config.DEFAULT_TAGS

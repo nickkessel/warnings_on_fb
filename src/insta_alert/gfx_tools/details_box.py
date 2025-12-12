@@ -3,7 +3,7 @@ import json
 from colorama import Fore, Back
 import textwrap
 if __name__ == '__main__': #handle for different places the script is called from
-    from watch_attributes import get_watch_attributes, get_watch_number
+    from .watch_attributes import get_watch_attributes, get_watch_number
     #from get_alert_geometry import get_alert_geometry
 else:
     from .watch_attributes import get_watch_attributes, get_watch_number
@@ -177,7 +177,7 @@ def get_hazard_details(alert, geom_type):
             #print('regexing SPS for more infos')
             specific_hazard_found = False
             raw_desc = alert['properties'].get('description') or ''
-            print(raw_desc)
+            #print(raw_desc)
             if raw_desc is not None: 
                 description_text = raw_desc.lower()
             else:
