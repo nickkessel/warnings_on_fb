@@ -33,6 +33,7 @@ dist/
 /deprecatedortest
 /old_ex_graphics
 /logs
+/test_json
 
 #deprecated/testing scripts and assets
 /plot_l3.py

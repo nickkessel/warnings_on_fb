@@ -299,7 +299,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         else:
             region = 'US'
         try:
-            use_snow_cmap = is_alert_winter(alert, centerlat, centerlon) #pass center lat/lon now so we dont have to do the same calc twice
+            use_snow_cmap = is_alert_winter(alert, centerlat, centerlon, geom) #pass center lat/lon now so we dont have to do the same calc twice
         except Exception as e:
             print(Fore.RED + f"Error checking for winter product! {e}" + Fore.RESET)
             use_snow_cmap = False
@@ -349,7 +349,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         ].copy()
         
         #print(f'total cities available: {len(df_large)}')
-        print(f'cities in view: {len(visible_cities_df)}')
+        #print(f'cities in view: {len(visible_cities_df)}')
 
         #plot cities
         fig.canvas.draw()
@@ -357,7 +357,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         plotted_points = []
         impacted_cities = [] #to include in the caption
         alert_height = final_maxy - final_miny #how big is the box? 'normal' alert heights: seems like up to .9-1?(degree) Anything bigger than that gets a little cluttered
-        print(f'alert height: {alert_height} degs') 
+        #print(f'alert height: {alert_height} degs') 
         #plotting lakes down here after we know the alert height
         if alert_height > 1.5: #might need tweaking, but should basically mean big alerts like watches and the like plot fewer lakes
             lakes15km.plot(ax=ax, linewidth = 0.4, edgecolor="#000000ff", facecolor="#a5d5fdff", transform = ccrs.PlateCarree(), zorder = -1)
@@ -575,7 +575,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         gc.collect()
 
 if __name__ == '__main__': 
-    with open('test_alerts/expiredfog.json', 'r') as file: 
+    with open('test_json/broken_sps.json', 'r') as file: 
         print(Back.YELLOW + Fore.BLACK + 'testing mode! (local files)' + Style.RESET_ALL)
         test_alert = json.load(file) 
-    plot_alert_polygon(test_alert, 'graphics/test/headline', False, 'issued')
+    plot_alert_polygon(test_alert, 'graphics/live-test/test/brokensps', True, 'issued')

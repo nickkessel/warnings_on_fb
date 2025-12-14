@@ -9,7 +9,7 @@ cwd = Path(os.getcwd())
 env_path = cwd / ".env"
 load_dotenv(env_path)
 ALERT_TYPES_TO_MONITOR = (
-    'Winter Weather Advisory'
+    WINTER
 )
 LOG_FILE = 'logs/posted_alerts_test2.log'
 # --- BOUNDING ZONES --- 
@@ -28,7 +28,7 @@ ACTIVE_ZONES = CINCY_ZONES #counties are w/ a C, marine zones w/ a Z
 # Set to True to enable posting, False to disable
 OUTPUT_DIR = 'graphics/live-test' #should be graphics/something
 POST_TO_FACEBOOK = False
-POST_TO_DISCORD = True #I HAVE TO CREATE NEW WEBHOOKS AND REPLACE THEM I THINK
+POST_TO_DISCORD = False #using tha new webhooks 
 POST_TO_INSTAGRAM_GRID = False
 POST_TO_INSTAGRAM_STORY = False
 SEND_TO_SLIDESHOW = False 

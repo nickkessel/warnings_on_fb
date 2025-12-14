@@ -105,4 +105,68 @@ def get_station_temp(sid):
         print(Fore.RED + f'Error: {e} while getting info from the station. Perhaps {sid}: {STATION_URL} is not in the NWS API?' + Fore.RESET)
         return Exception
     
-#get_station_temp('KMOP')
+    
+import requests
+import json
+
+def get_list_of_nearest_stations(lat, lon, numStations):
+    ids = []
+    lats = []
+    lons = []
+    temps_c = []
+
+
+    print("Fetching station list...")
+    stations_url = f'https://api.weather.gov/points/{lat},{lon}/stations'
+    response = requests.get(stations_url)
+    
+    if response.status_code != 200:
+        print(f"Failed to get stations: {response.status_code}")
+        return [], [], [], []
+
+    data = json.loads(response.content)
+    features = data.get('features', [])
+
+    count = min(numStations, len(features)) #make sure im not requesting more stations than exist
+
+    for i in range(count):
+        props = features[i]['properties']
+        geom = features[i]['geometry']
+
+        station_id = props['stationIdentifier']
+        # Distance is technically available in the JSON but sometimes buried; 
+        # ignoring recalculation here to keep it simple as per your snippets.
+        
+        station_lat = geom['coordinates'][1]
+        station_lon = geom['coordinates'][0]
+        dist_meters = props.get('distance', {}).get('value', 0)
+        dist_miles = round(dist_meters * 0.0006213712, 2)
+        # 2. Request temperature for this specific station
+        # Stations often go offline, so we must handle errors gracefully
+        station_temp = None
+        try:
+            obs_url = f'https://api.weather.gov/stations/{station_id}/observations/latest'
+            obs_resp = requests.get(obs_url)
+            
+            if obs_resp.status_code == 200:
+                obs_data = json.loads(obs_resp.content)
+                # Check if 'properties' exists and if 'temperature' is not None
+                if 'properties' in obs_data and obs_data['properties'].get('temperature'):
+                    station_temp = obs_data['properties']['temperature']['value']
+            else:
+                print(f"METAR: No observation data for {station_id} (Status {obs_resp.status_code})")
+        
+        except Exception as e:
+            print(f"METAR: Error getting temp for {station_id}: {e}")
+
+        ids.append(station_id)
+        lats.append(station_lat)
+        lons.append(station_lon)
+        temps_c.append(station_temp)
+        
+        print(Fore.YELLOW + f"METAR: {station_id}, Distance: {dist_miles}, Temp: {station_temp}" + Fore.RESET)
+
+    return ids, lats, lons, temps_c
+    
+
+#get_list_of_nearest_stations(40.497, -85.31, 3)
