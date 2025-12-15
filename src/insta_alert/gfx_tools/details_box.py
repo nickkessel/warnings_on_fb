@@ -60,6 +60,10 @@ def get_hazard_details(alert, geom_type):
         #high wind warnings
         hwwWind = 'n/a'
         hwwGust = 'n/a'
+        #snow parameters
+        totalSnow = 'n/a'
+        additionalSnow = 'n/a'
+        locallyHigher = 'n/a'
 
         #watch getting
         watch_attribs, watch_percents = ['n/a', 'n/a', 'n/a', 'n/a', 'n/a', 'n/a'], ['n/a', 'n/a', 'n/a', 'n/a', 'n/a', 'n/a']  #default to these
@@ -224,8 +228,48 @@ def get_hazard_details(alert, geom_type):
                                                          break_long_words=False)
                         print(additionalHazard)
                 else:
-                    additionalHazard = 'See Statement for Details'          
-
+                    additionalHazard = 'See Statement for Details'  
+                            
+        if alert_type in ["Winter Weather Advisory", "Winter Storm Warning", "Winter Storm Watch", "Blizzard Warning", "Lake Effect Snow Warning"]:
+            raw_desc = alert['properties'].get('description') or ''
+            print(raw_desc)
+            if raw_desc is not None: 
+                description_text = raw_desc.lower()
+            else:
+                description_text = " "
+            headline_text = alert['properties']['parameters'].get('NWSheadline', [''])[0]
+            search_text = description_text + ' ' + headline_text
+            specific_hazard_found = False
+            
+            snow_amounts = extract_snow_amounts(search_text)
+            totalSnow = "n/a"
+            additionalSnow = "n/a"
+            locallyHigher = "n/a"
+            
+            print(snow_amounts['total'], snow_amounts['additional'], snow_amounts['locally_higher'])
+            if snow_amounts['total'] != None:
+                totalSnow = snow_amounts['total']
+                specific_hazard_found = True
+            if snow_amounts['additional'] != None:
+                additionalSnow = snow_amounts['additional']
+                specific_hazard_found = True    
+            if snow_amounts['locally_higher'] != None:
+                locallyHigher = snow_amounts['locally_higher']
+                specific_hazard_found = True
+            #only run the headline if theres not specific snow amounts mentioned
+            if not specific_hazard_found:
+                if headline_text:
+                    additionalHazard = headline_text
+                    max_line_chars = 50
+                    if len(additionalHazard) > max_line_chars:
+                        # use textwrap.fill to wrap at spaces, not mid-word
+                        additionalHazard = textwrap.fill(additionalHazard, 
+                                                         width=max_line_chars, 
+                                                         break_long_words=False)
+                        print(additionalHazard)
+                else:
+                    additionalHazard = 'See Statement for Details'
+                    
         if alert_type == 'Dense Fog Advisory':
             denseFogThreat = 'Likely'
         
@@ -267,6 +311,9 @@ def get_hazard_details(alert, geom_type):
             ('Sig. Hail Probability', sigHailProb, ''),
             ('Accumulated Rainfall', rainFallen, 'in'),
             ('Additional Rain', additionalRain, 'in'),
+            ('Total Snow', totalSnow, 'in'),
+            ('Additional Snow', additionalSnow, 'in'),
+            ('Locally Higher Snow', locallyHigher, ''),
             ('Hazard', additionalHazard, ''),
             ('Max. Sustained Wind', hwwWind, ' MPH'), #seperate ones from the normal winds 
             ('Max. Wind Gusts', hwwGust, ' MPH')
@@ -327,7 +374,70 @@ def get_hazard_details(alert, geom_type):
         print(Back.RED + f"Error using Regex to get details_text!! {e}" + Back.RESET)
         return None, None, None, None, None, None
 
+
+def extract_snow_amounts(text):
+    results = {
+        "total": None,
+        "additional": None,
+        "locally_higher": None
+    }
+
+    # --- TOTAL ACCUMULATIONS ---
+    total_pattern = re.compile(
+        r"""(?ix)
+        \btotal(?:\s+storm)?\s+snow\s+accumulations
+        \s+(?:between|of)\s+
+        (\d+(?:\.\d+)?)\s*(?:to|and)\s*(\d+(?:\.\d+)?)\s*inches
+        """
+    )
+
+    m = total_pattern.search(text)
+    if m:
+        results["total"] = f"{m.group(1)} - {m.group(2)}"
+
+    # --- ADDITIONAL ACCUMULATIONS ---
+    additional_pattern = re.compile(
+        r"""(?ix)
+        \badditional\s+snow\s+accumulations
+        \s+(?:between|of)\s+
+        (\d+(?:\.\d+)?)\s*(?:to|and)\s*(\d+(?:\.\d+)?)\s*inches
+        """
+    )
+
+    m = additional_pattern.search(text)
+    if m:
+        results["additional"] = f"{m.group(1)} - {m.group(2)}"
+
+    # --- LOCALLY HIGHER AMOUNTS ---
+    locally_higher_pattern = re.compile(
+        r"""(?ix)
+        locally\s+higher
+        (?:\s+snow)?
+        \s+(?:amounts|totals|accumulations)
+        (?:
+            \s+(?:of|to)\s+
+            (\d+(?:\.\d+)?)
+            (?:\s*(?:to|-|and)\s*(\d+(?:\.\d+)?))?
+            (?:\s*inches)?
+        )?
+        """
+    )
+
+    m = locally_higher_pattern.search(text)
+    if m:
+        # If range exists, use upper bound
+        if m.group(2):
+            results["locally_higher"] = f"up to {m.group(2)} inches"
+        elif m.group(1):
+            results["locally_higher"] = f"up to {m.group(1)} inches"
+        else:
+            results["locally_higher"] = "Possible"
+
+    return results
+
+
+
 if __name__ == '__main__':
-    with open('test_alerts/ffw_regex_test.json', 'r') as file: 
+    with open('test_json/wwa.json', 'r') as file: 
         test_alert = json.load(file) 
-    get_hazard_details(test_alert)
+    get_hazard_details(test_alert, 'zone')

@@ -298,13 +298,14 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
             region = 'GU'
         else:
             region = 'US'
-        try:
-            use_snow_cmap = is_alert_winter(alert, centerlat, centerlon, geom) #pass center lat/lon now so we dont have to do the same calc twice
-        except Exception as e:
-            print(Fore.RED + f"Error checking for winter product! {e}" + Fore.RESET)
-            use_snow_cmap = False
+
 
         if mrms_plot == True:
+            try:
+                use_snow_cmap = is_alert_winter(alert, centerlat, centerlon, geom) #pass center lat/lon now so we dont have to do the same calc twice
+            except Exception as e:
+                print(Fore.RED + f"Error checking for winter product! {e}" + Fore.RESET)
+                use_snow_cmap = False
             subset, cmap, vmin, vmax, cbar_label, radar_valid_time = get_mrms_data_async(map_region2, alert_type, region, use_snow_cmap)
             #directly plot the MRMS data onto the main axes (and colorbar, seperately)
             if subset is not None and subset.unknown.size > 0:
@@ -575,7 +576,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         gc.collect()
 
 if __name__ == '__main__': 
-    with open('test_json/broken_sps.json', 'r') as file: 
+    with open('test_json/wwa.json', 'r') as file: 
         print(Back.YELLOW + Fore.BLACK + 'testing mode! (local files)' + Style.RESET_ALL)
         test_alert = json.load(file) 
-    plot_alert_polygon(test_alert, 'graphics/live-test/test/brokensps', True, 'issued')
+    plot_alert_polygon(test_alert, 'graphics/live-test/test/newwwa', False, 'issued')
