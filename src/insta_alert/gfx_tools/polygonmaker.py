@@ -306,40 +306,84 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
             except Exception as e:
                 print(Fore.RED + f"Error checking for winter product! {e}" + Fore.RESET)
                 use_snow_cmap = False
-            subset, cmap, vmin, vmax, cbar_label, radar_valid_time = get_mrms_data_async(map_region2, alert_type, region, use_snow_cmap)
+                
+            subset, flag_subset, cmap, vmin, vmax, cbar_label, radar_valid_time = get_mrms_data_async(map_region2, alert_type, region, use_snow_cmap)
+            #print(subset.unknown.size)
             #directly plot the MRMS data onto the main axes (and colorbar, seperately)
             if subset is not None and subset.unknown.size > 0:
-                im = ax.pcolormesh(
-                    subset.longitude, subset.latitude, subset.unknown,
-                    transform=ccrs.PlateCarree(),
-                    cmap=cmap, vmin=vmin, vmax=vmax, zorder=1
-                )
-                '''this plots the colorbar off to the side (dont want)
-                cbar = fig.colorbar(im, ax=ax, orientation='vertical', shrink=0.75, aspect=20, pad=0.02)
-                cbar.set_label(cbar_label, color="#7a7a7a", fontsize=10, weight='bold')
-                cbar.ax.tick_params(labelsize=8)
-                '''
-                # The list is [left, bottom, width, height] as fractions of the main plot area.
-                cax = ax.inset_axes([0.885, 0.17, 0.027, 0.75])
-                cax.set_facecolor("#00000034")
-                
-                cbar = fig.colorbar(im, cax=cax, orientation = 'vertical')
-                cbar.set_label(cbar_label, color="#000000", fontsize=10, weight='bold')
-                label_text = cbar.ax.yaxis.get_label()
-                label_text.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'white')])
+                if flag_subset is not None:
+                    print("MRMS: applying ptype mask")
+                    flag_subset = flag_subset.interp_like(subset, method = 'nearest')
+                    
+                    is_snow = (flag_subset.unknown == 3) | (flag_subset.unknown == 4) #codes from the flag table: https://github.com/NOAA-National-Severe-Storms-Laboratory/mrms-support/blob/main/GRIB2_TABLES/UserTable_MRMS_PrecipFlags.csv
+                    
+                    rain_data = subset.unknown.where(~is_snow)
+                    snow_data = subset.unknown.where(is_snow)
+                    
+                    #plot rain:
+                    im = ax.pcolormesh(
+                        subset.longitude, subset.latitude, rain_data, transform = ccrs.PlateCarree(),
+                        cmap = cmap, vmin=vmin, vmax=vmax, zorder = 1
+                    )
+                    #get snow cmap and plot snow
+                    from insta_alert.gfx_tools.plot_mrms2 import snow_cmap
+                    im2 = ax.pcolormesh(
+                        subset.longitude, subset.latitude, snow_data, transform = ccrs.PlateCarree(),
+                        cmap = snow_cmap, vmin=0, vmax=40, zorder = 1 #use 0 and 40 as thats the bounds of the snow cmap which is seperate from rain
+                    )
+                    
+                    #new kind of axis for ptyped
+                    rain_cax = ax.inset_axes([0.885, 0.16, 0.027, 0.52])
+                    rain_cax.set_facecolor("#00000034")
+                    
+                    snow_cax = ax.inset_axes([0.885, 0.71, 0.027, 0.27])
+                    snow_cax.set_facecolor('#00000034')
+                    
+                    cbar = fig.colorbar(im, cax=rain_cax, orientation = 'vertical')
+                    cbar2 = fig.colorbar(im2, cax = snow_cax, orientation = 'vertical')
+                    cbar.set_label("                                Reflectivity (Rain/Snow) (dBZ)", color="#000000", fontsize=10, weight='bold')
+                    label_text = cbar.ax.yaxis.get_label()
+                    label_text.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'white')])
 
-                cbar.ax.tick_params(labelsize=8, color= 'white', labelcolor = 'white')
-                
-                for label in cbar.ax.get_yticklabels():
-                    label.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'black')])
-                    label.set_fontweight('heavy')
+                    cbar.ax.tick_params(labelsize=8, color= 'white', labelcolor = 'white')
+                    
+                    for label in cbar.ax.get_yticklabels():
+                        label.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'black')])
+                        label.set_fontweight('heavy')
+                        
+                    cbar2.ax.tick_params(labelsize=8, color= 'white', labelcolor = 'white')
+                    
+                    for label in cbar2.ax.get_yticklabels():
+                        label.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'black')])
+                        label.set_fontweight('heavy')
+                    
+                else:
+                    im = ax.pcolormesh(
+                        subset.longitude, subset.latitude, subset.unknown, transform = ccrs.PlateCarree(),
+                        cmap = cmap, vmin=vmin, vmax=vmax, zorder = 1
+                    )
+
+                    # The list is [left, bottom, width, height] as fractions of the main plot area.
+                    cax = ax.inset_axes([0.885, 0.17, 0.027, 0.75])
+                    cax.set_facecolor("#00000034")
+                    
+                    cbar = fig.colorbar(im, cax=cax, orientation = 'vertical')
+                    cbar.set_label(cbar_label, color="#000000", fontsize=10, weight='bold')
+                    label_text = cbar.ax.yaxis.get_label()
+                    label_text.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'white')])
+
+                    cbar.ax.tick_params(labelsize=8, color= 'white', labelcolor = 'white')
+                    
+                    for label in cbar.ax.get_yticklabels():
+                        label.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'black')])
+                        label.set_fontweight('heavy')
                 
                 ax.text(0.01, 0.93, f"Radar data valid {radar_valid_time}", #radar time
                     transform=ax.transAxes, ha='left', va='top', 
                     fontsize=7, backgroundcolor="#eeeeeecc", zorder = 7)
                 
             else:
-                print("skipping plotting radar, no data returned from get_mrms_data")
+                print(Fore.RED + "MRMS ERROR: no data returned from get_mrms_data" + Fore.RESET)
         else:
             print('not plotting MRMS (recieved plot_mrms = False.)')
         
@@ -576,7 +620,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         gc.collect()
 
 if __name__ == '__main__': 
-    with open('test_json/wwa.json', 'r') as file: 
+    with open('test_json/wsw.json', 'r') as file: 
         print(Back.YELLOW + Fore.BLACK + 'testing mode! (local files)' + Style.RESET_ALL)
         test_alert = json.load(file) 
-    plot_alert_polygon(test_alert, 'graphics/live-test/test/newwwa', False, 'issued')
+    plot_alert_polygon(test_alert, 'graphics/live-test/test/bigwsw', True, 'issued')

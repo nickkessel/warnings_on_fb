@@ -232,7 +232,7 @@ def get_hazard_details(alert, geom_type):
                             
         if alert_type in ["Winter Weather Advisory", "Winter Storm Warning", "Winter Storm Watch", "Blizzard Warning", "Lake Effect Snow Warning"]:
             raw_desc = alert['properties'].get('description') or ''
-            print(raw_desc)
+            #print(raw_desc)
             if raw_desc is not None: 
                 description_text = raw_desc.lower()
             else:
@@ -246,7 +246,7 @@ def get_hazard_details(alert, geom_type):
             additionalSnow = "n/a"
             locallyHigher = "n/a"
             
-            print(snow_amounts['total'], snow_amounts['additional'], snow_amounts['locally_higher'])
+            #print(snow_amounts['total'], snow_amounts['additional'], snow_amounts['locally_higher'])
             if snow_amounts['total'] != None:
                 totalSnow = snow_amounts['total']
                 specific_hazard_found = True
@@ -365,7 +365,7 @@ def get_hazard_details(alert, geom_type):
                         formatted_string = formatted_string.rstrip("$")
                         formatted_string += r"\ \mathit{(observed)}"
                     formatted_string += "$"
-                print(formatted_string)
+                #print(formatted_string)
                 # default append for all non-Hazard items
                 details_text_lines.append(f"{label}: {formatted_string}")
         print(Fore.LIGHTBLUE_EX + "Successfully scanned alert text for attributes." + Fore.RESET)

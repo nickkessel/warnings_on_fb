@@ -54,7 +54,7 @@ def is_alert_winter(alert, centerlat, centerlon, alert_geometry):
                 r")\b"
         )  #regex to check for winter stuff goes here. need more
         snow_match = re.search(snow_pattern, description_text)
-        if (station_temp <= 2.0) or (snow_match and station_temp <= 4.5):
+        if (station_temp <= 2.0) or (snow_match):
             print(Fore.LIGHTBLUE_EX + 'WINTER: Using snow cmap' + Fore.RESET)
             return True
             #pefrom metar query with that many nearby stations, return the lists of each variable. 

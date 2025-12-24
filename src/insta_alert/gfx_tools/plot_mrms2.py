@@ -143,7 +143,6 @@ normalized_stops5 = [
 # Create the colormap
 snow_cmap = LinearSegmentedColormap.from_list("Snow", normalized_stops5)
 
-MAX_CACHE_SIZE = 5 #how many mrms scans it holds in the cache before it starts deleting 
 
 valid_time = 0
 #really just useful for testing
@@ -277,72 +276,37 @@ def save_mrms_subset(bbox, type, state_borders):
 #new way testing (async download/caching)
 #cache stores the last successfully downloaded MRMS dataset
 #key is URL, value is a tuple: (timestamp, xarray_dataset)
+MAX_CACHE_SIZE = 5 #how many mrms scans it holds in the cache before it starts deleting 
+MAX_DATA_AGE = 180 #seconds
 mrms_cache = {}
 cache_lock = threading.Lock()
-#locks the thread so that other threads can't "look in" and try and access what its doing while its working
-def get_mrms_data_async(bbox, type, region, ptype):
-    """
-    Fetches and subsets the latest MRMS data using a resilient, thread-safe,
-    in-memory cache to improve speed and reliability.
-    """
-    # This section determines which MRMS product to download
-    if region == 'AK':
-        ref_url = 'https://mrms.ncep.noaa.gov/2D/ALASKA/MergedReflectivityAtLowestAltitude/MRMS_MergedReflectivityAtLowestAltitude.latest.grib2.gz'
-        qpe_url = 'https://mrms.ncep.noaa.gov/2D/ALASKA/RadarOnly_QPE_01H/MRMS_RadarOnly_QPE_01H.latest.grib2.gz'
-    elif region == 'HI':
-        ref_url = 'https://mrms.ncep.noaa.gov/2D/HAWAII/ReflectivityAtLowestAltitude/MRMS_ReflectivityAtLowestAltitude.latest.grib2.gz'
-        qpe_url = 'https://mrms.ncep.noaa.gov/2D/HAWAII/RadarOnly_QPE_01H/MRMS_RadarOnly_QPE_01H.latest.grib2.gz'
-    elif region == 'PR':
-        ref_url = 'https://mrms.ncep.noaa.gov/2D/CARIB/ReflectivityAtLowestAltitude/MRMS_ReflectivityAtLowestAltitude.latest.grib2.gz'
-        qpe_url = 'https://mrms.ncep.noaa.gov/2D/CARIB/RadarOnly_QPE_01H/MRMS_RadarOnly_QPE_01H.latest.grib2.gz'
-    elif region == 'GU':
-        ref_url = 'https://mrms.ncep.noaa.gov/2D/GUAM/ReflectivityAtLowestAltitude/MRMS_ReflectivityAtLowestAltitude.latest.grib2.gz'
-        qpe_url = 'https://mrms.ncep.noaa.gov/2D/GUAM/RadarOnly_QPE_01H/MRMS_RadarOnly_QPE_01H.latest.grib2.gz'
-    else:
-        ref_url = "https://mrms.ncep.noaa.gov/2D/ReflectivityAtLowestAltitude/MRMS_ReflectivityAtLowestAltitude.latest.grib2.gz"
-        qpe_url = "https://mrms.ncep.noaa.gov/2D/RadarOnly_QPE_01H/MRMS_RadarOnly_QPE_01H.latest.grib2.gz"
 
-    if type in [ "Flash Flood Warning", "Flood Advisory", "Flood Warning"]:
-        url = qpe_url
-        convert_units = True
-        cmap_to_use = qpe2_cmap
-        data_min, data_max = min_val3, max_val3
-        cbar_label = "Radar Estimated Precipitation (1h) (in)"
-    elif ptype:
-        url = ref_url
-        convert_units = False
-        cmap_to_use = snow_cmap
-        data_min, data_max = min_val5, max_val5
-        cbar_label = "Reflectivity (Snow) (dBZ)"
-    else:
-        url = ref_url
-        convert_units = False
-        cmap_to_use = radarscope_cmap
-        data_min, data_max = min_dbz, max_dbz
-        cbar_label = "Reflectivity (dBZ)"
+def _fetch_mrms_grid(url, bbox, convert_units=False):
+    """Helper function to handle caching, downloading, and subsetting of mrms products.
 
-    # --- Part 1: Read from the cache ---
+    Args:
+        url (mrms.ncep.noaa.gov/product URL): where to get the data from
+        bbox (array): lat/lon bounds of the target area
+        convert_units (bool, optional): if you want to convert units (from mm to in, for QPE). Defaults to False.
+
+    Returns:
+        _type_: subsetted data,
+        _type_: the time of the product (short)
+    """    
+    #print(mrms_cache)
+    #check cache:
     with cache_lock:
         if url in mrms_cache:
-            # The cache tuple is (download_time, dataset, pre-formatted_time_string, last_access_time)
             cache_time, ds, valid_time_short, access_time = mrms_cache[url]
-            
-            # Check if the cached data is fresh enough to use
-            if time.time() - cache_time < 120:
-                print(f"Using cached data from: {time.strftime('%H:%M:%S', time.localtime(cache_time))}")
-                
-                # Update the last access time and put it back in the cache
-                mrms_cache[url] = (cache_time, ds, valid_time_short, time.time())
+            if time.time() - cache_time < MAX_DATA_AGE: #if data more than x second old
+                mrms_cache[url] = (cache_time, ds, valid_time_short, time.time()) #update acccess time 
                 
                 lon_slice = slice(bbox['lon_min'] + 360, bbox['lon_max'] + 360)
                 lat_slice = slice(bbox['lat_max'], bbox['lat_min'])
-                subset = ds.sel(latitude=lat_slice, longitude=lon_slice).load()
-                
-                # Return the pre-formatted time string directly from the cache
-                return subset, cmap_to_use, data_min, data_max, cbar_label, valid_time_short
-
-    # --- Part 2: Fetch new data if cache is empty or stale ---
-    print(f'Cache is stale or empty. Fetching new data from {url}')
+                subset = ds.sel(latitude = lat_slice, longitude = lon_slice).load()
+                return subset, valid_time_short
+    # 2. Download if not cached
+    # print(f'Fetching new data from {url}')
     grib_content = None
     max_retries = 3
     for attempt in range(max_retries):
@@ -350,17 +314,15 @@ def get_mrms_data_async(bbox, type, region, ptype):
             response = requests.get(url, timeout=30)
             response.raise_for_status()
             grib_content = gzip.decompress(response.content)
-            print('Download successful')
             break
-        except (RequestException, IncompleteRead) as e:
-            print(f'Attempt {attempt + 1} failed, retrying')
+        except (RequestException, IncompleteRead):
             if attempt + 1 >= max_retries:
-                print(Back.RED + "All download attempts failed" + Back.RESET)
-                return None, None, None, None, None, None
-            else:
-                time.sleep(3)
-                
-    # --- Part 3: Process the new data and add it to the cache ---
+                print(Back.RED + f"Failed to download {url}" + Back.RESET)
+                return None, None
+            time.sleep(2)
+
+    # 3. Process
+    tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix='.grib2') as tmp:
             tmp.write(grib_content)
@@ -372,109 +334,81 @@ def get_mrms_data_async(bbox, type, region, ptype):
         if convert_units:
             ds['unknown'] = ds['unknown'] / 25.4
 
-        # FIXED: Pre-format the time string here using the correct codes (%H for hour, %M for minute)
         valid_time_short = ds.time.dt.strftime('%H:%M UTC').item()
 
         with cache_lock:
-            # Prune the cache if it exceeds the max size
             if len(mrms_cache) >= MAX_CACHE_SIZE:
-                # Find the least recently used item (based on access_time at index 3) and remove it
                 oldest_url = min(mrms_cache.keys(), key=lambda k: mrms_cache[k][3])
                 del mrms_cache[oldest_url]
-                print(f"Cache limit reached. Removed {oldest_url}")
 
             current_time = time.time()
-            # Store the new data, including the pre-formatted time string
             mrms_cache[url] = (current_time, ds, valid_time_short, current_time)
-            print(Back.GREEN + f"MRMS cache updated at {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime(current_time))}" + Back.RESET)
 
-        # Subset the new data and return it
         lon_slice = slice(bbox['lon_min'] + 360, bbox['lon_max'] + 360)
         lat_slice = slice(bbox['lat_max'], bbox['lat_min'])
         subset = ds.sel(latitude=lat_slice, longitude=lon_slice).load()
         
-        return subset, cmap_to_use, data_min, data_max, cbar_label, valid_time_short
+        return subset, valid_time_short
         
     except Exception as e:
-        print(Back.RED + f'An error occurred during xarray processing: {e}' + Back.RESET)
-        return None, None, None, None, None, None
+        print(Back.RED + f'MRMS: Error processing MRMS grid: {e}' + Back.RESET)
+        return None, None
     finally:
-        # Clean up the temporary file
-        if 'tmp_path' in locals() and os.path.exists(tmp_path):
+        if tmp_path and os.path.exists(tmp_path):
             os.remove(tmp_path)
                 
+#locks the thread so that other threads can't "look in" and try and access what its doing while its working
+def get_mrms_data_async(bbox, type, region, ptype):
+    """
+    Fetches latest MRMS data 
+    """
+    base_url = 'https://mrms.ncep.noaa.gov/2D/'
+    # This section determines which MRMS product to download
+    if region == 'AK':
+        ref_url = base_url + 'ALASKA/MergedReflectivityAtLowestAltitude/MRMS_MergedReflectivityAtLowestAltitude.latest.grib2.gz'
+        flag_url = base_url + 'ALASKA/PrecipFlag/MRMS_PrecipFlag.latest.grib2.gz'
+        qpe_url = base_url + 'ALASKA/RadarOnly_QPE_01H/MRMS_RadarOnly_QPE_01H.latest.grib2.gz'
+    elif region == 'HI':
+        ref_url = base_url + 'HAWAII/ReflectivityAtLowestAltitude/MRMS_ReflectivityAtLowestAltitude.latest.grib2.gz'
+        flag_url = base_url + 'HAWAII/PrecipFlag/MRMS_PrecipFlag.latest.grib2.gz'
+        qpe_url = base_url + 'HAWAII/RadarOnly_QPE_01H/MRMS_RadarOnly_QPE_01H.latest.grib2.gz'
+    elif region == 'PR':
+        ref_url = base_url + 'CARIB/ReflectivityAtLowestAltitude/MRMS_ReflectivityAtLowestAltitude.latest.grib2.gz'
+        flag_url = base_url + 'CARIB/PrecipFlag/MRMS_PrecipFlag.latest.grib2.gz'
+        qpe_url = base_url + 'CARIB/RadarOnly_QPE_01H/MRMS_RadarOnly_QPE_01H.latest.grib2.gz'
+    elif region == 'GU':
+        ref_url = base_url + 'GUAM/ReflectivityAtLowestAltitude/MRMS_ReflectivityAtLowestAltitude.latest.grib2.gz'
+        flag_url = base_url + 'GUAM/PrecipFlag/MRMS_PrecipFlag.latest.grib2.gz'
+        qpe_url = base_url + 'GUAM/RadarOnly_QPE_01H/MRMS_RadarOnly_QPE_01H.latest.grib2.gz'
+    else:
+        ref_url = base_url + 'ReflectivityAtLowestAltitude/MRMS_ReflectivityAtLowestAltitude.latest.grib2.gz'
+        flag_url = base_url + 'PrecipFlag/MRMS_PrecipFlag.latest.grib2.gz'
+        qpe_url = base_url + 'RadarOnly_QPE_01H/MRMS_RadarOnly_QPE_01H.latest.grib2.gz'
     
-'''
-#old way, somewhat stable, doesn't survive dropped connections
-def get_mrms_data(bbox, type):
-    """
-    Fetches and subsets the latest MRMS data.
-
-    Returns:
-        A tuple containing the subsetted xarray dataset, the appropriate colormap,
-        vmin, vmax, colorbar label, and the valid time string.
-    """
-    ref_url = "https://mrms.ncep.noaa.gov/2D/ReflectivityAtLowestAltitude/MRMS_ReflectivityAtLowestAltitude.latest.grib2.gz"
-    qpe1hr_url = "https://mrms.ncep.noaa.gov/2D/RadarOnly_QPE_01H/MRMS_RadarOnly_QPE_01H.latest.grib2.gz"
-    grib_file = 'latest.grib2'
-    try:
-        if type == "Flash Flood Warning":
-            url = qpe1hr_url
-            convert_units = True
-            cmap_to_use = qpe2_cmap
-            data_min, data_max = min_val3, max_val3
-            cbar_label = "Radar Estimated Precipitation (1h)"
-        else:
-            url = ref_url
-            convert_units = False
-            cmap_to_use = radarscope_cmap
-            data_min, data_max = min_dbz, max_dbz
-            cbar_label = "Reflectivity (dBZ)"
+    flag_subset = None
+    
+    if type in ["Flash Flood Warning", "Flood Advisory", "Flood Warning"]:
+        #qpe mode
+        main_subset, valid_time = _fetch_mrms_grid(qpe_url, bbox, convert_units=True)
+        cmap_to_use = qpe2_cmap
+        data_min, data_max = 0.0, 4.0
+        cbar_label = "Radar Estimated Precipitation (1hr) (in)"
+    else:
+        #reflectivity mode
+        main_subset, valid_time = _fetch_mrms_grid(ref_url, bbox, convert_units=False)
+        print(ref_url)
+        cmap_to_use = radarscope_cmap
+        data_min, data_max = min_dbz, max_dbz
+        cbar_label = "Reflectivity (dBZ)"
         
-        print(f"Fetching data from {url}")
-        # Download and write file
-        response = requests.get(url, timeout=30)
-        response.raise_for_status() # Raises an exception for bad status codes (4xx or 5xx)
-        grib_content = gzip.decompress(response.content)
-        with open(grib_file, "wb") as f:
-            f.write(grib_content)
+        #get flags if its to be ptyped
+        if ptype and main_subset is not None:
+            print('MRMS: Getting precipflag for ptyping')
+            flag_subset, _ = _fetch_mrms_grid(flag_url, bbox, convert_units=False)
+    
+    return main_subset, flag_subset, cmap_to_use, data_min, data_max, cbar_label, valid_time
+                
 
-        # Open dataset with xarray
-        # The decode_timedelta=False argument silences the FutureWarning
-        ds = xr.open_dataset(grib_file, engine="cfgrib", backend_kwargs={'decode_timedelta': False})
-
-        # Subset data
-        lon_slice = slice(bbox['lon_min'] + 360, bbox['lon_max'] + 360)
-        lat_slice = slice(bbox['lat_max'], bbox['lat_min'])
-        subset = ds.sel(latitude=lat_slice, longitude=lon_slice)
-
-        if subset.unknown.size == 0:
-            print("Error: Data subset is empty.")
-            return None, None, None, None, None, None
-        
-        if convert_units:
-            subset['unknown'] = subset['unknown'] / 25.4
-
-        valid_time_short = ds.time.dt.strftime('%H:%M UTC').item()
-        ds.close()
-        subset.load()
-
-        return subset, cmap_to_use, data_min, data_max, cbar_label, valid_time_short
-
-    except Exception as e:
-        # Catch any exception during download, write, or read
-        print(f"An error occurred in get_mrms_data: {e}")
-        return None, None, None, None, None, None
-
-    finally:
-        # This block always runs, ensuring files are cleaned up
-        if os.path.exists(grib_file):
-            os.remove(grib_file)
-        # Use glob to find and remove any matching index files
-        for idx_file in glob.glob(f"{grib_file}*.idx"):
-            if os.path.exists(idx_file):
-                os.remove(idx_file)
-'''
 
 if __name__ == '__main__':
     # Define a bounding box for the Ohio region
