@@ -22,7 +22,7 @@ def is_alert_winter(alert, centerlat, centerlon, alert_geometry):
     if alert_type in WINTER or alert_type == 'Special Weather Statement':
         #combining both, bc if a wsw or smth is issued out in advance, it may not be cold enough for the snow cmap yet.
         description_text = alert['properties'].get('description', '').lower()
-        station_temp = 0.0 #default to this bit of the check being true unless the station is close enough
+        station_temp = 99.0 #default to this bit of the check being FALSE unless the station is close enough
         attempts = 5 #check this many nearby stations
         ids, lats, lons, temps = get_list_of_nearest_stations(centerlat, centerlon, attempts) #check {attempts} nearest
         for i in range(attempts):
@@ -54,6 +54,8 @@ def is_alert_winter(alert, centerlat, centerlon, alert_geometry):
                 r")\b"
         )  #regex to check for winter stuff goes here. need more
         snow_match = re.search(snow_pattern, description_text)
+       # print(description_text)
+        #print(snow_match)
         if (station_temp <= 2.0) or (snow_match):
             print(Fore.LIGHTBLUE_EX + 'WINTER: Using snow cmap' + Fore.RESET)
             return True

@@ -315,49 +315,102 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
                     print("MRMS: applying ptype mask")
                     flag_subset = flag_subset.interp_like(subset, method = 'nearest')
                     
-                    is_snow = (flag_subset.unknown == 3) | (flag_subset.unknown == 4) #codes from the flag table: https://github.com/NOAA-National-Severe-Storms-Laboratory/mrms-support/blob/main/GRIB2_TABLES/UserTable_MRMS_PrecipFlags.csv
-                    
-                    rain_data = subset.unknown.where(~is_snow)
+                    is_snow = flag_subset.unknown.isin([3,4]) #(flag_subset.unknown == 4) #codes from the flag table: https://github.com/NOAA-National-Severe-Storms-Laboratory/mrms-support/blob/main/GRIB2_TABLES/UserTable_MRMS_PrecipFlags.csv
+                    is_rain = (~is_snow) & (flag_subset.unknown > 0) # or (flag_subset.unknown == 6) or (flag_subset.unknown == 7) or (flag_subset.unknown == 10) or (flag_subset.unknown == 91) or (flag_subset.unknown == 96) 
+                    #what i want to do is only plot the snow cbar if theres only snow, so check if the rain subset "rain_data" is empty, then dont draw the rain colorbar. Will probably need to add a mask for just snow, so 
+                        #flag codes 1,6,7,10,91,96
+                    rain_data = subset.unknown.where(is_rain)  #not "is snow", and isn't "nothing"
                     snow_data = subset.unknown.where(is_snow)
                     
-                    #plot rain:
-                    im = ax.pcolormesh(
-                        subset.longitude, subset.latitude, rain_data, transform = ccrs.PlateCarree(),
-                        cmap = cmap, vmin=vmin, vmax=vmax, zorder = 1
-                    )
-                    #get snow cmap and plot snow
+                    has_rain = rain_data.count().item() > 0
+                    has_snow = snow_data.count().item() > 0
+                    #print(f'rain: {has_rain} snow: {has_snow}')
+                    
                     from insta_alert.gfx_tools.plot_mrms2 import snow_cmap
-                    im2 = ax.pcolormesh(
-                        subset.longitude, subset.latitude, snow_data, transform = ccrs.PlateCarree(),
-                        cmap = snow_cmap, vmin=0, vmax=40, zorder = 1 #use 0 and 40 as thats the bounds of the snow cmap which is seperate from rain
-                    )
-                    
-                    #new kind of axis for ptyped
-                    rain_cax = ax.inset_axes([0.885, 0.16, 0.027, 0.52])
-                    rain_cax.set_facecolor("#00000034")
-                    
-                    snow_cax = ax.inset_axes([0.885, 0.71, 0.027, 0.27])
-                    snow_cax.set_facecolor('#00000034')
-                    
-                    cbar = fig.colorbar(im, cax=rain_cax, orientation = 'vertical')
-                    cbar2 = fig.colorbar(im2, cax = snow_cax, orientation = 'vertical')
-                    cbar.set_label("                                Reflectivity (Rain/Snow) (dBZ)", color="#000000", fontsize=10, weight='bold')
-                    label_text = cbar.ax.yaxis.get_label()
-                    label_text.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'white')])
-
-                    cbar.ax.tick_params(labelsize=8, color= 'white', labelcolor = 'white')
-                    
-                    for label in cbar.ax.get_yticklabels():
-                        label.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'black')])
-                        label.set_fontweight('heavy')
+                    if has_rain and not has_snow:
+                        print(Fore.LIGHTBLUE_EX + 'MRMS: Using rain colorbar (no snow)' + Fore.RESET)
+                        im = ax.pcolormesh(
+                            subset.longitude, subset.latitude, rain_data, transform = ccrs.PlateCarree(),
+                            cmap = cmap, vmin=vmin, vmax=vmax, zorder = 1
+                        )
                         
-                    cbar2.ax.tick_params(labelsize=8, color= 'white', labelcolor = 'white')
-                    
-                    for label in cbar2.ax.get_yticklabels():
-                        label.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'black')])
-                        label.set_fontweight('heavy')
+                        rain_cax = ax.inset_axes([0.885, 0.17, 0.027, 0.75])
+                        rain_cax.set_facecolor("#00000034")
+                        
+                        cbar = fig.colorbar(im, cax=rain_cax, orientation = 'vertical')
+                        cbar.set_label("Reflectivity (dBZ)", color="#000000", fontsize=10, weight='bold')
+                        
+                        label_text = cbar.ax.yaxis.get_label()
+                        label_text.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'white')])
+
+                        cbar.ax.tick_params(labelsize=8, color= 'white', labelcolor = 'white')
+                        
+                        for label in cbar.ax.get_yticklabels():
+                            label.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'black')])
+                            label.set_fontweight('heavy')
+
+                    elif not has_rain and has_snow:
+                        print(Fore.LIGHTBLUE_EX + 'MRMS: Using snow colorbar (no rain)' + Fore.RESET)
+                        im = ax.pcolormesh(
+                            subset.longitude, subset.latitude, snow_data, transform = ccrs.PlateCarree(),
+                            cmap = snow_cmap, vmin=0, vmax=40, zorder = 1 #use 0 and 40 as thats the bounds of the snow cmap which is seperate from rain
+                        )
+                        
+                        snow_cax = ax.inset_axes([0.885, 0.17, 0.027, 0.75])
+                        snow_cax.set_facecolor("#00000034")
+                        
+                        cbar = fig.colorbar(im, cax=snow_cax, orientation = 'vertical')
+                        cbar.set_label("Reflectivity (Snow) (dBZ)", color="#000000", fontsize=10, weight='bold')
+                        
+                        label_text = cbar.ax.yaxis.get_label()
+                        label_text.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'white')])
+
+                        cbar.ax.tick_params(labelsize=8, color= 'white', labelcolor = 'white')
+                        
+                        for label in cbar.ax.get_yticklabels():
+                            label.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'black')])
+                            label.set_fontweight('heavy')
+                            
+                    elif has_rain and has_snow:
+                        print(Fore.LIGHTBLUE_EX + 'MRMS: Using both snow/rain colorbar' + Fore.RESET)
+                        #plot rain:
+                        im = ax.pcolormesh(
+                            subset.longitude, subset.latitude, rain_data, transform = ccrs.PlateCarree(),
+                            cmap = cmap, vmin=vmin, vmax=vmax, zorder = 1
+                        )
+                        #plot snow
+                        im2 = ax.pcolormesh(
+                            subset.longitude, subset.latitude, snow_data, transform = ccrs.PlateCarree(),
+                            cmap = snow_cmap, vmin=0, vmax=40, zorder = 1 #use 0 and 40 as thats the bounds of the snow cmap which is seperate from rain
+                        )
+                        
+                        #new kind of axis for ptyped (split colorbars)
+                        rain_cax = ax.inset_axes([0.885, 0.16, 0.027, 0.52])
+                        rain_cax.set_facecolor("#00000034")
+                        
+                        snow_cax = ax.inset_axes([0.885, 0.71, 0.027, 0.27])
+                        snow_cax.set_facecolor('#00000034')
+                        
+                        cbar = fig.colorbar(im, cax=rain_cax, orientation = 'vertical')
+                        cbar2 = fig.colorbar(im2, cax = snow_cax, orientation = 'vertical')
+                        cbar.set_label("                                Reflectivity (Rain/Snow) (dBZ)", color="#000000", fontsize=10, weight='bold')
+                        label_text = cbar.ax.yaxis.get_label()
+                        label_text.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'white')])
+
+                        cbar.ax.tick_params(labelsize=8, color= 'white', labelcolor = 'white')
+                        
+                        for label in cbar.ax.get_yticklabels():
+                            label.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'black')])
+                            label.set_fontweight('heavy')
+                            
+                        cbar2.ax.tick_params(labelsize=8, color= 'white', labelcolor = 'white')
+                        
+                        for label in cbar2.ax.get_yticklabels():
+                            label.set_path_effects([PathEffects.withStroke(linewidth=1, foreground = 'black')])
+                            label.set_fontweight('heavy')
                     
                 else:
+                    #default plotting with just rain
                     im = ax.pcolormesh(
                         subset.longitude, subset.latitude, subset.unknown, transform = ccrs.PlateCarree(),
                         cmap = cmap, vmin=vmin, vmax=vmax, zorder = 1
@@ -623,4 +676,4 @@ if __name__ == '__main__':
     with open('test_json/wsw.json', 'r') as file: 
         print(Back.YELLOW + Fore.BLACK + 'testing mode! (local files)' + Style.RESET_ALL)
         test_alert = json.load(file) 
-    plot_alert_polygon(test_alert, 'graphics/live-test/test/bigwsw', True, 'issued')
+    plot_alert_polygon(test_alert, 'graphics/live-test/test/rainandsnow', True, 'issued')
