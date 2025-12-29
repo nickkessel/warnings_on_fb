@@ -237,7 +237,7 @@ def are_alerts_different(new_alert, ref_alert):
         ref_ugc = set(ref_alert['properties']['geocode'].get('UGC', []))
         #print(f'New alert UGC: {new_ugc} \nRef aler UGC: {ref_ugc}')
         if new_ugc == ref_ugc:
-            print("Affected zones (UGC) are the same. This is a duplicate update.")
+            #print("Affected zones (UGC) are the same. This is a duplicate update.")
             return False, ''
         else:
             description = new_alert['properties'].get('description', None)
@@ -462,7 +462,8 @@ def main():
                 except Exception as e:
                     print(Back.RED + f'CRITICAL ERROR during plotting of {alert_id}: {e}' + Back.RESET)
             else: 
-                print(Fore.YELLOW + f'Ref check failed, {clickable_alert_id} is a duplicate/downgrade. No plot.' + Fore.RESET)
+                print("")
+                #print(Fore.YELLOW + f'Ref check failed, {clickable_alert_id} is a duplicate/downgrade. No plot.' + Fore.RESET)
 
         print(Fore.LIGHTCYAN_EX + f'End scan. {len(delayed_watches)} watches in queue. Rescan in {check_time}s' + Fore.RESET)
         time.sleep(check_time)

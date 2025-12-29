@@ -396,7 +396,7 @@ def get_mrms_data_async(bbox, type, region, ptype):
     else:
         #reflectivity mode
         main_subset, valid_time = _fetch_mrms_grid(ref_url, bbox, convert_units=False)
-        print(ref_url)
+        #print(ref_url)
         cmap_to_use = radarscope_cmap
         data_min, data_max = min_dbz, max_dbz
         cbar_label = "Reflectivity (dBZ)"
