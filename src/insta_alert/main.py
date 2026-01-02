@@ -461,8 +461,9 @@ def main():
                         print(Back.YELLOW + f'Plotting failed for {alert_id}, will retry on next scan.' + Back.RESET)
                 except Exception as e:
                     print(Back.RED + f'CRITICAL ERROR during plotting of {alert_id}: {e}' + Back.RESET)
-            else: 
-                print("")
+                    report_error(e, "some sort of error with posting/plotting alert polygon?")
+            #else: 
+             #   print("")
                 #print(Fore.YELLOW + f'Ref check failed, {clickable_alert_id} is a duplicate/downgrade. No plot.' + Fore.RESET)
 
         print(Fore.LIGHTCYAN_EX + f'End scan. {len(delayed_watches)} watches in queue. Rescan in {check_time}s' + Fore.RESET)

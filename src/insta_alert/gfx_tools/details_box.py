@@ -242,6 +242,7 @@ def get_hazard_details(alert, geom_type):
             specific_hazard_found = False
             
             snow_amounts = extract_snow_amounts(search_text)
+            print(snow_amounts)
             totalSnow = "n/a"
             additionalSnow = "n/a"
             locallyHigher = "n/a"
@@ -278,7 +279,7 @@ def get_hazard_details(alert, geom_type):
             description_text = ' '.join(raw_desc.split()).lower()
             
             wind_pattern = r"\b(?:[Nn]orth|[Ss]outh|[Ee]ast|[Ww]est)?\s*winds?\s+(?:around\s+)?(\d+(?:\s*(?:to|-)\s*\d+)?)\s*mph"
-            gust_pattern = r"\bgusts?\s+(?:up to|around)?\s*(\d+(?:\s*(?:to|-)\s*\d+)?)\s*mph"
+            gust_pattern = r"\b(?:occasional|periodic|sporadic)?\s*gusts?\s+(?:up to|to|of|around)?\s*(\d+(?:\s*(?:to|-)\s*\d+)?)\s*mph"
 
             wind_match = re.search(wind_pattern, description_text)
             gust_match = re.search(gust_pattern, description_text)
@@ -311,8 +312,8 @@ def get_hazard_details(alert, geom_type):
             ('Sig. Hail Probability', sigHailProb, ''),
             ('Accumulated Rainfall', rainFallen, 'in'),
             ('Additional Rain', additionalRain, 'in'),
-            ('Total Snow', totalSnow, 'in'),
             ('Additional Snow', additionalSnow, 'in'),
+            ('Total Snow', totalSnow, 'in'),
             ('Locally Higher Snow', locallyHigher, ''),
             ('Hazard', additionalHazard, ''),
             ('Max. Sustained Wind', hwwWind, ' MPH'), #seperate ones from the normal winds 
@@ -374,6 +375,19 @@ def get_hazard_details(alert, geom_type):
         print(Back.RED + f"Error using Regex to get details_text!! {e}" + Back.RESET)
         return None, None, None, None, None, None
 
+WORD_NUMS = {
+    "one": "1",
+    "two": "2",
+    "three": "3",
+    "four": "4",
+    "five": "5",
+    "six": "6",
+    "seven": "7",
+    "eight": "8",
+    "nine": "9",
+    "ten": "10"
+}
+
 
 def extract_snow_amounts(text):
     results = {
@@ -385,53 +399,146 @@ def extract_snow_amounts(text):
     # --- TOTAL ACCUMULATIONS ---
     total_pattern = re.compile(
         r"""(?ix)
-        \btotal(?:\s+storm)?\s+snow\s+accumulations
-        \s+(?:between|of)\s+
-        (\d+(?:\.\d+)?)\s*(?:to|and)\s*(\d+(?:\.\d+)?)\s*inches
+        \btotal
+        (?:\s+snow(?:\s+and\s+sleet)?)?
+        \s+accumulations
+        (?:
+            \s+(?:between|of)\s+
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+            \s*(?:to|and)\s*
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+        |
+            \s+up\s+to\s+
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+        |
+            \s+
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+            \s*(?:to|-|and)\s*
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+        )
         """
     )
 
+
     m = total_pattern.search(text)
     if m:
-        results["total"] = f"{m.group(1)} - {m.group(2)}"
+        def norm(val):
+            return WORD_NUMS.get(val.lower(), val)
+
+        if m.group(3):
+            results["total"] = f"up to {norm(m.group(3))}"
+        elif m.group(4) and m.group(5):
+            results["total"] = f"{norm(m.group(4))} - {norm(m.group(5))}"
+        else:
+            results["total"] = f"{norm(m.group(1))} - {norm(m.group(2))}"
+
 
     # --- ADDITIONAL ACCUMULATIONS ---
     additional_pattern = re.compile(
         r"""(?ix)
-        \badditional\s+snow\s+accumulations
-        \s+(?:between|of)\s+
-        (\d+(?:\.\d+)?)\s*(?:to|and)\s*(\d+(?:\.\d+)?)\s*inches
+        \badditional
+        (?:\s+snow(?:\s+and\s+sleet)?)?
+        \s+accumulations
+        (?:
+            \s+(?:between|of)\s+
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+            \s*(?:to|and)\s*
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+        |
+            \s+up\s+to\s+
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+        |
+            \s+
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+            \s*(?:to|-|and)\s*
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+        )
         """
     )
 
+
     m = additional_pattern.search(text)
     if m:
-        results["additional"] = f"{m.group(1)} - {m.group(2)}"
+        def norm(val):
+            return WORD_NUMS.get(val.lower(), val)
 
-    # --- LOCALLY HIGHER AMOUNTS ---
+        if m.group(3):
+            results["additional"] = f"up to {norm(m.group(3))}"
+        elif m.group(4) and m.group(5):
+            results["additional"] = f"{norm(m.group(4))} - {norm(m.group(5))}"
+        else:
+            results["additional"] = f"{norm(m.group(1))} - {norm(m.group(2))}"
+
+
+    # --- LOCALLY HIGHER / UP TO ---
     locally_higher_pattern = re.compile(
         r"""(?ix)
-        locally\s+higher
-        (?:\s+snow)?
-        \s+(?:amounts|totals|accumulations)
         (?:
-            \s+(?:of|to)\s+
-            (\d+(?:\.\d+)?)
-            (?:\s*(?:to|-|and)\s*(\d+(?:\.\d+)?))?
-            (?:\s*inches)?
-        )?
+            locally\s+higher
+            (?:\s+snow)?
+            \s+(?:amounts|totals|accumulations)
+            (?:
+                \s+(?:of|to)\s+
+                (\d+(?:\.\d+)?)
+                (?:\s*(?:to|-|and)\s*(\d+(?:\.\d+)?))?
+                (?:\s*inches)?
+            )?
+        |
+            up\s+to\s+
+            (\d+(?:\.\d+)?)\s*inches
+            \s+(?:possible|expected)
+        )
         """
     )
 
     m = locally_higher_pattern.search(text)
     if m:
-        # If range exists, use upper bound
-        if m.group(2):
+        if m.group(3):
+            results["locally_higher"] = f"up to {m.group(3)} inches"
+        elif m.group(2):
             results["locally_higher"] = f"up to {m.group(2)} inches"
         elif m.group(1):
             results["locally_higher"] = f"up to {m.group(1)} inches"
         else:
             results["locally_higher"] = "Possible"
+            
+    # --- GENERIC TOTAL (can't get specifics) ---        
+    generic_total_pattern = re.compile(
+        r"""(?ix)
+        \bsnow
+        (?:\s*[\.\-]?\s*)
+        (?:\s+and\s+sleet)?
+        \s+accumulations
+        (?:
+            \s+(?:between|of)\s+
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+            \s*(?:to|and)\s*
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+        |
+            \s+up\s+to\s+
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+        |
+            \s+
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+            \s*(?:to|-|and)\s*
+            (\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)
+        )
+        """
+    )
+
+    if results["total"] is None and results["additional"] is None:
+        m = generic_total_pattern.search(text)
+        if m:
+            def norm(val):
+                return WORD_NUMS.get(val.lower(), val)
+
+            if m.group(3):
+                results["total"] = f"up to {norm(m.group(3))}"
+            elif m.group(4) and m.group(5):
+                results["total"] = f"{norm(m.group(4))} - {norm(m.group(5))}"
+            else:
+                results["total"] = f"{norm(m.group(1))} - {norm(m.group(2))}"
+
 
     return results
 
