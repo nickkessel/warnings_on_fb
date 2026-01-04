@@ -18,6 +18,7 @@ from .integrations.facebook import post_to_facebook
 from .gfx_tools.watch_attributes import get_watch_attributes, get_watch_number
 from .utils.logging import load_posted_alerts, save_posted_alert
 from .utils.error_handler import report_error
+from .utils.polygon_size import calc_area
 print(Back.LIGHTWHITE_EX + Fore.BLACK + 'Load 3' + Fore.RESET + Back.RESET)
 import ijson
 import gzip
@@ -40,7 +41,7 @@ else:
 #TODO: rename project at some point
 
 NWS_ALERTS_URL = "https://api.weather.gov/alerts/active"
-IS_TESTING = False # Set to True to use local files, False to run normally
+IS_TESTING = True # Set to True to use local files, False to run normally
 
 # Store already posted alerts to prevent duplicates
 
@@ -127,6 +128,7 @@ def get_nws_alerts(warning_types):
 def clean_filename(name):
     return re.sub(r'[<>:"/\\|?*.]', '', name)
 
+
 def are_alerts_different(new_alert, ref_alert):
     """
     Only works with polygon based alerts 
@@ -145,7 +147,7 @@ def are_alerts_different(new_alert, ref_alert):
     # Case 1: Both are polygon-based (e.g., Warnings)
     if new_geom and ref_geom: #add another check where it only does the parameters stuff for tor and svr, and if/else for ffws, and have seperate logic for those
         if alert_type == 'Severe Thunderstorm Warning' or alert_type == 'Tornado Warning' or alert_type == 'Tornado Emergency': #not sure if that last one comes through as a seperate thing but worht a shot
-            print("checking SVR/TOR attributes...")
+            print(Fore.RESET + "checking SVR/TOR attributes...")
 
             new_maxWindGust = new_params.get('maxWindGust', ["0"])[0]
             new_maxWindGust = re.sub('[^0-9]','', new_maxWindGust) #regex to remove all letters/spaces
@@ -159,8 +161,12 @@ def are_alerts_different(new_alert, ref_alert):
             ref_tornadoDetection = ref_params.get('tornadoDetection', [None])[0]
             new_torSeverity = new_params.get('tornadoDamageThreat', [None])[0]
             ref_torSeverity = ref_params.get('tornadoDamageThreat', [None])[0]
-            
-            print(new_maxWindGust,ref_maxWindGust,new_maxHailSize,ref_maxHailSize,new_tornadoDetection,ref_tornadoDetection,new_torSeverity,ref_torSeverity)
+            #print(new_geom['coordinates'][0])
+            new_size = calc_area(new_geom['coordinates'])
+            ref_size = calc_area(ref_geom['coordinates'])
+            print("NEW  REF")
+            print("maxWind | maxHail | torDetect | torSeverity")
+            print(f'{new_maxWindGust,ref_maxWindGust} | {new_maxHailSize,ref_maxHailSize} | {new_tornadoDetection,ref_tornadoDetection} | {new_torSeverity,ref_torSeverity}')
             # Compare key attributes that would trigger a new post
             if (int(new_maxWindGust) > int(ref_maxWindGust) or float(new_maxHailSize) > float(ref_maxHailSize)):
                 print("Wind/Hail has increased. UPGRADE")
@@ -186,11 +192,24 @@ def are_alerts_different(new_alert, ref_alert):
                     print('geometries are equal, not plotting.')
                     return False, ''
                 else:
-                    print("Geometries are different.")
-                    return True, 'continued'
-            else:
-                print(Back.YELLOW + "how did we get here?? (maybe downgrade?)" + Back.RESET)
-                return True, 'continued' #really its more than likely a downgrade, but i dont want to say downgrade as that implies that its chill now (which it may not be)
+                    if new_size < ref_size:
+                        print("New alert is smaller than ref alert, not posting")
+                        return False, ''
+                    else:
+                        print("New alert larger than ref alert, continue")
+                        return True, 'continued'
+            elif int(new_maxWindGust) < int(ref_maxWindGust) or float(new_maxHailSize) < float(ref_maxHailSize):
+                print("One or both attributes were downgraded, checking geometries")
+                if shape(new_geom).equals(shape(ref_geom)):
+                    print('geometries are equal, not plotting.')
+                    return False, ''
+                else:
+                    if new_size < ref_size:
+                        print("New alert is smaller than ref alert, not posting")
+                        return False, ''
+                    else:
+                        print("New alert larger than ref alert, continue")
+                        return True, 'continued'
         elif alert_type == 'Flash Flood Warning': #do ffw specific checks
             print("checking FFW attributes")
             new_ffwDetection = new_params.get('flashFloodDetection', [None])[0]
@@ -362,7 +381,7 @@ def main():
         alerts_stack = []
         if IS_TESTING:
             print(Back.YELLOW + Fore.BLACK + "--- RUNNING IN TEST MODE ---" + Back.RESET)
-            with open('test_alerts/expiredfog.json', 'r') as f:
+            with open('test_json/svr.json', 'r') as f:
                 alerts_stack = [json.load(f)]
         else:
             alerts_stack = get_nws_alerts(warning_types)
@@ -433,7 +452,7 @@ def main():
                 event_type = properties.get("event")
                 try:
                     plot_mrms = True #default to plotting radar
-                    no_mrms_list = ['Dense Fog Advisory', 'Freeze Warning', 'Frost Advisory', 'Red Flag Warning']
+                    no_mrms_list = ['Dense Fog Advisory', 'Freeze Warning', 'Frost Advisory', 'Red Flag Warning', 'Wind Advisory']
 
                     if event_type in no_mrms_list:
                         print(f'{event_type}, skipping mrms plotting')

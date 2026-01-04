@@ -57,7 +57,7 @@ def get_hazard_details(alert, geom_type):
         #flood stuff
         rainFallen = 'n/a'
         additionalRain = 'n/a'
-        #high wind warnings
+        #high wind warnings/wind advisories
         hwwWind = 'n/a'
         hwwGust = 'n/a'
         #snow parameters
@@ -274,12 +274,12 @@ def get_hazard_details(alert, geom_type):
         if alert_type == 'Dense Fog Advisory':
             denseFogThreat = 'Likely'
         
-        if alert_type == 'High Wind Warning':
+        if alert_type in ['High Wind Warning', 'Wind Advisory']:
             raw_desc = alert['properties'].get('description', '')
             description_text = ' '.join(raw_desc.split()).lower()
             
             wind_pattern = r"\b(?:[Nn]orth|[Ss]outh|[Ee]ast|[Ww]est)?\s*winds?\s+(?:around\s+)?(\d+(?:\s*(?:to|-)\s*\d+)?)\s*mph"
-            gust_pattern = r"\b(?:occasional|periodic|sporadic)?\s*gusts?\s+(?:up to|to|of|around)?\s*(\d+(?:\s*(?:to|-)\s*\d+)?)\s*mph"
+            gust_pattern = r"\b(?:occasional|periodic|sporadic)?\s*gusts?\s+(?:up to|as high as|to|of|around)?\s*(\d+(?:\s*(?:to|-)\s*\d+)?)\s*mph"
 
             wind_match = re.search(wind_pattern, description_text)
             gust_match = re.search(gust_pattern, description_text)

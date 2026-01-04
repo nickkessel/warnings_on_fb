@@ -9,7 +9,7 @@ cwd = Path(os.getcwd())
 env_path = cwd / ".env"
 load_dotenv(env_path)
 ALERT_TYPES_TO_MONITOR = (
-    ALL
+    'Wind Advisory'
 )
 LOG_FILE = 'logs/posted_alerts_test2.log'
 # --- BOUNDING ZONES --- 
