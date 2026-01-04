@@ -41,7 +41,7 @@ else:
 #TODO: rename project at some point
 
 NWS_ALERTS_URL = "https://api.weather.gov/alerts/active"
-IS_TESTING = True # Set to True to use local files, False to run normally
+IS_TESTING = False # Set to True to use local files, False to run normally
 
 # Store already posted alerts to prevent duplicates
 
