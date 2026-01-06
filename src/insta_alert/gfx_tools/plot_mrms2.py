@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import os
+import glob
 from matplotlib.colors import LinearSegmentedColormap
 #import numpy as np
 #import glob
@@ -15,6 +16,7 @@ import threading
 from requests.exceptions import RequestException
 from http.client import IncompleteRead
 import tempfile
+import gc
 #from datetime import datetime
 
 #DONE: fix scaling/distortion of the colorbar/legend
@@ -276,7 +278,7 @@ def save_mrms_subset(bbox, type, state_borders):
 #new way testing (async download/caching)
 #cache stores the last successfully downloaded MRMS dataset
 #key is URL, value is a tuple: (timestamp, xarray_dataset)
-MAX_CACHE_SIZE = 5 #how many mrms scans it holds in the cache before it starts deleting 
+MAX_CACHE_SIZE = 3 #how many mrms scans it holds in the cache before it starts deleting 
 MAX_DATA_AGE = 180 #seconds
 mrms_cache = {}
 cache_lock = threading.Lock()
@@ -301,10 +303,23 @@ def _fetch_mrms_grid(url, bbox, convert_units=False):
             if time.time() - cache_time < MAX_DATA_AGE: #if data more than x second old
                 mrms_cache[url] = (cache_time, ds, valid_time_short, time.time()) #update acccess time 
                 
-                lon_slice = slice(bbox['lon_min'] + 360, bbox['lon_max'] + 360)
-                lat_slice = slice(bbox['lat_max'], bbox['lat_min'])
-                subset = ds.sel(latitude = lat_slice, longitude = lon_slice).load()
-                return subset, valid_time_short
+                try:                 
+                    lon_slice = slice(bbox['lon_min'] + 360, bbox['lon_max'] + 360)
+                    lat_slice = slice(bbox['lat_max'], bbox['lat_min'])
+                    subset = ds.sel(latitude = lat_slice, longitude = lon_slice)
+                    return subset, valid_time_short
+                except Exception as e:
+                    print(Fore.RED + f'MRMS: Error subsetting data!! {e}' + Fore.RESET)
+                    pass
+            else:
+                try:
+                    print(f'MRMS: Cache expired for {url}, clearing.')
+                    old_ds = mrms_cache.pop(url)[1]
+                    old_ds.close()
+                    del old_ds
+                except Exception:
+                    pass
+
     # 2. Download if not cached
     # print(f'Fetching new data from {url}')
     grib_content = None
@@ -339,7 +354,11 @@ def _fetch_mrms_grid(url, bbox, convert_units=False):
         with cache_lock:
             if len(mrms_cache) >= MAX_CACHE_SIZE:
                 oldest_url = min(mrms_cache.keys(), key=lambda k: mrms_cache[k][3])
-                del mrms_cache[oldest_url]
+                old_cache_item = mrms_cache.pop(oldest_url)
+                old_ds = old_cache_item[1]
+                old_ds.close()
+                del old_ds
+                gc.collect()
 
             current_time = time.time()
             mrms_cache[url] = (current_time, ds, valid_time_short, current_time)
@@ -354,8 +373,17 @@ def _fetch_mrms_grid(url, bbox, convert_units=False):
         print(Back.RED + f'MRMS: Error processing MRMS grid: {e}' + Back.RESET)
         return None, None
     finally:
-        if tmp_path and os.path.exists(tmp_path):
-            os.remove(tmp_path)
+            # OPTIMIZATION: Aggressively clean up temporary files AND hidden .idx files
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                    # Cleanup cfgrib index files (e.g., temp.grib2.923a8.idx)
+                    for f in glob.glob(tmp_path + '*.idx'):
+                        os.remove(f)
+                except OSError:
+                    pass
+            
+            gc.collect()
                 
 #locks the thread so that other threads can't "look in" and try and access what its doing while its working
 def get_mrms_data_async(bbox, type, region, ptype):

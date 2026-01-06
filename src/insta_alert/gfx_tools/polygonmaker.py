@@ -145,6 +145,7 @@ def draw_alert_shape(ax, shp, colors):
 
 def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
     plot_start_time = time.time()
+    fig = None
     geom, geom_type = get_alert_geometry(alert) #returns geometry shape and if it is polygon or zone/county
     minx0, _, maxx0, _ = geom.bounds #i swear i've got minx and maxx defined in like 10k places so these will be unique ones
     width = maxx0 - minx0
@@ -218,7 +219,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         states_gdf.plot(ax=ax, transform=ccrs.PlateCarree(), edgecolor='black', facecolor='none', linewidth=1.5, zorder=2)
         us_highways.plot(ax=ax, linewidth= 0.5, edgecolor= 'red', transform = ccrs.PlateCarree(), zorder = 4)
         interstates.plot(ax=ax, linewidth = 1, edgecolor='blue', transform = ccrs.PlateCarree(), zorder = 4)
-        oceans.plot(ax=ax, linewidth = 0, edgecolor="#000000ff", facecolor="#66baffff", transform = ccrs.PlateCarree(), zorder = -1)
+        oceans.plot(ax=ax, linewidth = 0, edgecolor="#000000ff", facecolor="#66baffff", transform = ccrs.PlateCarree(), zorder = -1) #oceans includes stuff thats not the usa which is uh not good but yeah
         
         #simplified
         colors = ALERT_COLORS.get(alert_type, ALERT_COLORS['default'])
@@ -410,7 +411,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
                             label.set_fontweight('heavy')
                     
                 else:
-                    #default plotting with just rain
+                    #default plotting with just rain ("classic")
                     im = ax.pcolormesh(
                         subset.longitude, subset.latitude, subset.unknown, transform = ccrs.PlateCarree(),
                         cmap = cmap, vmin=vmin, vmax=vmax, zorder = 1
@@ -434,6 +435,10 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
                 ax.text(0.01, 0.93, f"Radar data valid {radar_valid_time}", #radar time
                     transform=ax.transAxes, ha='left', va='top', 
                     fontsize=7, backgroundcolor="#eeeeeecc", zorder = 7)
+                
+                del subset
+                if flag_subset is not None:
+                    del flag_subset
                 
             else:
                 print(Fore.RED + "MRMS ERROR: no data returned from get_mrms_data" + Fore.RESET)
@@ -665,15 +670,18 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         print(Fore.LIGHTGREEN_EX + f"Map saved to {output_path} in {elapsed_plot_time:.2f}s. Total script time: {elapsed_total_time:.2f}s" + Fore.RESET)
         #print(statement)
         return output_path, statement
+    
     except Exception as e:
         print(Fore.RED + f"Error plotting alert geometry: {e}" + Fore.RESET)
         return None, None
     finally:
-        plt.close(fig) #hey dipshit dont comment this out 
+        if fig:
+            plt.close(fig) #hey dipshit dont comment this out 
+        plt.close('all')
         gc.collect()
 
 if __name__ == '__main__': 
-    with open('test_json/test_broken_regex.json', 'r') as file: 
+    with open('test_json/wsw.json', 'r') as file: 
         print(Back.YELLOW + Fore.BLACK + 'testing mode! (local files)' + Style.RESET_ALL)
         test_alert = json.load(file) 
-    plot_alert_polygon(test_alert, 'graphics/live-test/test/broken_regex', False, 'issued')
+    plot_alert_polygon(test_alert, 'graphics/live-test/test/test', True, 'issued')

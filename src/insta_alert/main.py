@@ -7,6 +7,7 @@ import json
 import re
 print(Back.LIGHTWHITE_EX + Fore.BLACK + 'Load 1' + Fore.RESET + Back.RESET)
 import os
+import gc
 from dotenv import load_dotenv
 import threading #slideshow
 import queue #slideshow
@@ -63,67 +64,71 @@ def get_nws_alerts(warning_types):
     """    
     print(Fore.CYAN + f'Beginning monitoring of {NWS_ALERTS_URL} at {datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M:%Sz %m/%d")}' + Fore.RESET)
     try:
-        response = requests.get(NWS_ALERTS_URL, headers={"User-Agent": "weather-alert-bot"}, stream = True, timeout = (10,60))
-        response.raise_for_status()
-        #alerts = response.json().get("features", [])
-        #handle alerts 1 by 1 in a stream, decompressing each file as you go
-        decompressed_stream = gzip.GzipFile(fileobj=response.raw)
-        alerts = ijson.items(decompressed_stream, 'features.item')
-        print( Back.GREEN + Fore.BLACK + "Connected to alerts stream, start processing" + Style.RESET_ALL)
+        with requests.get(NWS_ALERTS_URL, headers={"User-Agent": "weather-alert-bot"}, stream = True, timeout = (10,60)) as response:
+            response.raise_for_status()
+            #alerts = response.json().get("features", [])
+            #handle alerts 1 by 1 in a stream, decompressing each file as you go
+            decompressed_stream = gzip.GzipFile(fileobj=response.raw)
+            alerts = ijson.items(decompressed_stream, 'features.item')
+            print( Back.GREEN + Fore.BLACK + "Connected to alerts stream, start processing" + Style.RESET_ALL)
 
-        filtered_alerts = []
-        total_alerts_processed = 0
-        for alert in alerts:
-            total_alerts_processed += 1
-            properties = alert["properties"]
-            event_type = properties.get("event")
-            issuing_office = properties.get('senderName')
-            issuing_time_str = properties.get('sent')
-            local_dt = datetime.datetime.fromisoformat(issuing_time_str)
-            utc_dt = local_dt.astimezone(datetime.timezone.utc)
-            issuing_time = utc_dt.strftime("%m-%d %H:%Mz") #zulu time format
-            affected_zones = properties.get("geocode", {}).get("UGC", [])
-            geometry = alert.get("geometry")
+            filtered_alerts = []
+            total_alerts_processed = 0
+            for alert in alerts:
+                total_alerts_processed += 1
+                properties = alert["properties"]
+                event_type = properties.get("event")
+                issuing_office = properties.get('senderName')
+                issuing_time_str = properties.get('sent')
+                local_dt = datetime.datetime.fromisoformat(issuing_time_str)
+                utc_dt = local_dt.astimezone(datetime.timezone.utc)
+                issuing_time = utc_dt.strftime("%m-%d %H:%Mz") #zulu time format
+                affected_zones = properties.get("geocode", {}).get("UGC", [])
+                geometry = alert.get("geometry")
 
-            def any_point_in_bbox(geo, bbox):
-                #check if any vertex of a polygon is inside the target box
-                if not geo or not geo.get('coordinates') or not geo['coordinates'][0]: #check for and skip empty geometries
-                    return False
-                points = geo["coordinates"][0]
+                def any_point_in_bbox(geo, bbox):
+                    #check if any vertex of a polygon is inside the target box
+                    if not geo or not geo.get('coordinates') or not geo['coordinates'][0]: #check for and skip empty geometries
+                        return False
+                    points = geo["coordinates"][0]
 
-                is_inside = any(
-                    bbox['lon_min'] <= lon <= bbox['lon_max'] and \
-                        bbox['lat_min'] <= lat <= bbox['lat_max']
-                    for lon, lat in points
-                )
-                return is_inside #true/false
-            
-            def county_in_selected(zones, target, skip = config.EVERYWHERE):
-                if skip :
-                    return True
-                else:
-                    if not target.isdisjoint(zones): 
-                        #print('alert in target zones')
+                    is_inside = any(
+                        bbox['lon_min'] <= lon <= bbox['lon_max'] and \
+                            bbox['lat_min'] <= lat <= bbox['lat_max']
+                        for lon, lat in points
+                    )
+                    return is_inside #true/false
+                
+                def county_in_selected(zones, target, skip = config.EVERYWHERE):
+                    if skip :
                         return True
                     else:
-                        #print('alert not in target zones')
-                        return False
-                
-            target_zones_set = set(config.ACTIVE_ZONES)
-            if event_type in warning_types and county_in_selected(affected_zones, target_zones_set): # and any_point_in_bbox(geometry, config.ACTIVE_BBOX) :
-                print("Matching alert found: " + Fore.YELLOW + f"{event_type} - " + Fore.MAGENTA + f"{issuing_office}" + Fore.RESET + f" at {issuing_time}")
-                filtered_alerts.append(alert)
-            #else:
-                #print(f'{event_type} not in zone')
+                        if not target.isdisjoint(zones): 
+                            #print('alert in target zones')
+                            return True
+                        else:
+                            #print('alert not in target zones')
+                            return False
+                    
+                target_zones_set = set(config.ACTIVE_ZONES)
+                if event_type in warning_types and county_in_selected(affected_zones, target_zones_set): # and any_point_in_bbox(geometry, config.ACTIVE_BBOX) :
+                    print("Matching alert found: " + Fore.YELLOW + f"{event_type} - " + Fore.MAGENTA + f"{issuing_office}" + Fore.RESET + f" at {issuing_time}")
+                    filtered_alerts.append(alert)
+                #else:
+                    #print(f'{event_type} not in zone')
 
-        print(Back.GREEN + f"Returning {len(filtered_alerts)} filtered alerts. Total processed: {total_alerts_processed}" + Back.RESET)
-        return filtered_alerts
+            print(Back.GREEN + f"Returning {len(filtered_alerts)} filtered alerts. Total processed: {total_alerts_processed}" + Back.RESET)
+            return filtered_alerts
+        
     except requests.RequestException as e:
         print(f"Error fetching NWS alerts (request exception): {e}")
         return []
     except Exception as e:
         print(f'An error occurred during JSON stream processing: {e}')
         return []
+    finally:
+        if 'decompressed_stream' in locals():
+            decompressed_stream.close()
 
 def clean_filename(name):
     return re.sub(r'[<>:"/\\|?*.]', '', name)
@@ -484,7 +489,8 @@ def main():
             #else: 
              #   print("")
                 #print(Fore.YELLOW + f'Ref check failed, {clickable_alert_id} is a duplicate/downgrade. No plot.' + Fore.RESET)
-
+        gc.collect()
+        
         print(Fore.LIGHTCYAN_EX + f'End scan. {len(delayed_watches)} watches in queue. Rescan in {check_time}s' + Fore.RESET)
         time.sleep(check_time)
 
