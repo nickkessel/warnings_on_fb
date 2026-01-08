@@ -20,6 +20,7 @@ from .gfx_tools.watch_attributes import get_watch_attributes, get_watch_number
 from .utils.logging import load_posted_alerts, save_posted_alert
 from .utils.error_handler import report_error
 from .utils.polygon_size import calc_area
+from .utils.usage import get_current_mem_usage
 print(Back.LIGHTWHITE_EX + Fore.BLACK + 'Load 3' + Fore.RESET + Back.RESET)
 import ijson
 import gzip
@@ -118,6 +119,7 @@ def get_nws_alerts(warning_types):
                     #print(f'{event_type} not in zone')
 
             print(Back.GREEN + f"Returning {len(filtered_alerts)} filtered alerts. Total processed: {total_alerts_processed}" + Back.RESET)
+            get_current_mem_usage()
             return filtered_alerts
         
     except requests.RequestException as e:
@@ -351,7 +353,6 @@ def main():
     while True:
         warning_types = config.ALERT_TYPES_TO_MONITOR
         #print(Fore.LIGHTCYAN_EX + 'Start scan for alerts' + Fore.RESET)
-        
         # --- Stage 1: Prepare lists for the current scan cycle ---
         alerts_ready_to_process = []
         watches_for_next_cycle = []

@@ -3,11 +3,22 @@ from colorama import Fore, Back
 import requests
 import time
 from shapely import unary_union, buffer
-
+import gc
 
 zone_geometry_cache = {}
-MAX_ZONES_IN_CACHE = 200
+MAX_ZONES_IN_CACHE = 75 #was 200, but seemed to get some errors possibly as a result. no alert should be much bigger than 75 zones?
 
+def count_vertices(geom):
+    """Helper to count total vertices in a geometry."""
+    if geom is None:
+        return 0
+    if geom.geom_type == 'Polygon':
+        return len(geom.exterior.coords)
+    elif geom.geom_type == 'MultiPolygon':
+        return sum(len(g.exterior.coords) for g in geom.geoms)
+    else:
+        return 0
+    
 def get_alert_geometry(alert):
     """
     Determines the geometry for an alert. 
@@ -22,7 +33,7 @@ def get_alert_geometry(alert):
         return shape(geometry_data), 'polygon'
 
     # If no direct geometry, process as a zone-based alert (e.g., a Watch)
-    print("Processing zone-based alert (geometry is null).")
+    print("GEO: Processing zone-based alert (geometry is null).")
     affected_zones = alert['properties'].get('affectedZones', [])
     if not affected_zones:
         print(Fore.YELLOW + "Alert has no geometry and no affected zones." + Fore.RESET)
@@ -35,7 +46,7 @@ def get_alert_geometry(alert):
         return None, None
     '''
     geometries = []
-    print(f"Fetching geometries for {len(affected_zones)} zones...")
+    print(f"GEO: Fetching geometries for {len(affected_zones)} zones...")
     max_retries = 5
     for attempt in range(max_retries):
         for zone_url in affected_zones:
@@ -51,25 +62,40 @@ def get_alert_geometry(alert):
                 
                 if zone_geom_data:
                     zone_shape = shape(zone_geom_data)
+                    #print(f'GEO: {count_vertices(zone_shape)} vertices pre-simplify')
+                    zone_shape = zone_shape.simplify(0.0075, preserve_topology= True) #0.001 is like 0.001deg (100m), which should reduce vertex count. increase value to use less memory and have lower res 
+                            #alert geom borders. 0.02 is prob the highest you wanna go b4 u start losing important detail, esp w/ smaller alerts. could work in a way for larger (more zone) alerts have larger val,
+                            #leading to less fine detail and alerts w/ less zones have smaller val, leading to more detail 0.0075 seems p good
+                    #print(f'GEO: {count_vertices(zone_shape)} vertices post-simplify')
                     geometries.append(zone_shape)
                     if len(zone_geometry_cache) >= MAX_ZONES_IN_CACHE:
                         # remove a random item (simple approach) or the first item
                         zone_geometry_cache.pop(next(iter(zone_geometry_cache)))
                     zone_geometry_cache[zone_url] = zone_shape
             except requests.RequestException as e:
-                print(Fore.RED + f"Failed to fetch geometry for zone {zone_url}: {e}. Attempt {attempt}, retrying." + Fore.RESET)
+                print(Fore.RED + f"GEO: Failed to fetch geometry for zone {zone_url}: {e}. Attempt {attempt}, retrying." + Fore.RESET)
                 if attempt + 1 >= max_retries:
-                    print(Back.RED + f"All download attempts ({max_retries}) failed" + Back.RESET)
+                    print(Back.RED + f"GEO: All download attempts ({max_retries}) failed" + Back.RESET)
                     attempt += 1
                     continue
                 else:
                     time.sleep(2)
     if not geometries:
-        print(Fore.RED + "Could not retrieve any geometries for the affected zones." + Fore.RESET)
+        print(Fore.RED + "GEO: Could not retrieve any geometries for the affected zones." + Fore.RESET)
         return None
-
-    # Combine all individual zone polygons into one single shape
-    combined_geometry = unary_union(geometries)
-    clean_geometry = buffer(combined_geometry, 0.001) #should remove tiny/weird overlaps.
-    print("Successfully combined zone geometries.")
-    return clean_geometry, 'zone'
+    try:
+        # Combine all individual zone polygons into one single shape
+        combined_geometry = unary_union(geometries)
+        
+        del geometries
+        gc.collect()
+        #print(f'GEO: {count_vertices(combined_geometry)} vertices pre-buffer')
+        clean_geometry = buffer(combined_geometry, 0.001, quad_segs= 1) #should remove tiny/weird overlaps. less quad segs = less resolution mehtinks
+        #print(f'GEO: {count_vertices(clean_geometry)} vertices post-buffer')
+        print("GEO: Successfully combined zone geometries.")
+        return clean_geometry, 'zone'
+    
+    except Exception as e:
+        print(Fore.RED + f"Error combining geometries: {e}" + Fore.RESET)
+        gc.collect()
+        return None, None

@@ -54,7 +54,7 @@ ZORDER STACK
 try:    
     VERSION_NUMBER = importlib.metadata.version('insta-alert') #Major version (dk criteria for this) Minor version (pushes to stable branch) Feature version (each push to dev branch)
 except importlib.metadata.PackageNotFoundError:
-    VERSION_NUMBER = '0.7.14'
+    VERSION_NUMBER = '0.8.16'
     
 print(Back.BLUE + f'Running graphics v{VERSION_NUMBER}' + Back.RESET)
 
@@ -681,7 +681,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         gc.collect()
 
 if __name__ == '__main__': 
-    with open('test_json/wsw.json', 'r') as file: 
+    with open('test_json/test_wwa_for_zone_border_simplify.json', 'r') as file: 
         print(Back.YELLOW + Fore.BLACK + 'testing mode! (local files)' + Style.RESET_ALL)
         test_alert = json.load(file) 
-    plot_alert_polygon(test_alert, 'graphics/live-test/test/test', True, 'issued')
+    plot_alert_polygon(test_alert, 'graphics/live-test/test/simplify_geom_0d02.jpg', False, 'issued')

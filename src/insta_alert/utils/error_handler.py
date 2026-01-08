@@ -1,5 +1,6 @@
 import traceback
 from .constants import DISCORD_PINGS_ALL, ERROR_WEBHOOK
+from .usage import get_current_mem_usage
 import datetime
 from discord_webhook import DiscordWebhook
 from colorama import Fore
@@ -19,14 +20,15 @@ def report_error(error: Exception, context: str):
             [f"<@&{role}>" for role in mention_roles]
         )
         print(mentions_text)
-
+        memory_usage =  get_current_mem_usage()
         # Compose message
         message = (
             f"🚨 **CRITICAL ERROR in {context}** 🚨\n"
             f"**Time (UTC):** {timestamp}\n"
             f"**Error Type:** {type(error).__name__}\n"
             f"**Details:** ```{str(error)}```\n"
-            f"**Traceback:** ```{tb_str[-1800:]}```"
+            f"**Traceback:** ```{tb_str[-1800:]}```\n"
+            f"**System Info:** ```{memory_usage}MB RAM in use by program```\n"
             f"pings: {mentions_text}\n"
         )
 

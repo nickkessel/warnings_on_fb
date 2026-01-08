@@ -9,9 +9,9 @@ cwd = Path(os.getcwd())
 env_path = cwd / ".env"
 load_dotenv(env_path)
 ALERT_TYPES_TO_MONITOR = (
-    'Wind Advisory'
+    'Winter Weather Advisory'
 )
-LOG_FILE = 'logs/posted_alerts_test2.log'
+LOG_FILE = 'logs/posted_alerts_test3.log'
 # --- BOUNDING ZONES --- 
 #use https://api.weather.gov/zones?type=county search to find county codes. best source.
 
