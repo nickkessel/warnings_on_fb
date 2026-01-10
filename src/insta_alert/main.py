@@ -20,7 +20,7 @@ from .gfx_tools.watch_attributes import get_watch_attributes, get_watch_number
 from .utils.logging import load_posted_alerts, save_posted_alert
 from .utils.error_handler import report_error
 from .utils.polygon_size import calc_area
-from .utils.usage import get_current_mem_usage
+from .utils.usage import get_current_mem_usage, log_memory_breakdown
 print(Back.LIGHTWHITE_EX + Fore.BLACK + 'Load 3' + Fore.RESET + Back.RESET)
 import ijson
 import gzip
@@ -341,6 +341,7 @@ def main():
     global posted_alerts
     posted_alerts = load_posted_alerts(config.LOG_FILE)
     slideshow_queue = None
+    loop_counter = 10 #every x cycles check memory logs
     if config.SEND_TO_SLIDESHOW:
         slideshow_queue = queue.Queue()
         from insta_alert.integrations.slideshow import run_slideshow
@@ -491,7 +492,10 @@ def main():
              #   print("")
                 #print(Fore.YELLOW + f'Ref check failed, {clickable_alert_id} is a duplicate/downgrade. No plot.' + Fore.RESET)
         gc.collect()
-        
+        loop_counter += 1
+        if loop_counter % 10 == 0:
+            log_memory_breakdown()
+            
         print(Fore.LIGHTCYAN_EX + f'End scan. {len(delayed_watches)} watches in queue. Rescan in {check_time}s' + Fore.RESET)
         time.sleep(check_time)
 
