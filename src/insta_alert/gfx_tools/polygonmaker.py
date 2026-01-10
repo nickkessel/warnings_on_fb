@@ -1,4 +1,6 @@
 #using this as like a test thing
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from shapely.geometry import shape, Point
@@ -676,6 +678,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         return None, None
     finally:
         if fig:
+            print('yes fig')
             plt.close(fig) #hey dipshit dont comment this out 
         plt.close('all')
         gc.collect()
