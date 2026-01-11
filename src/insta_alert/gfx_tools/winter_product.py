@@ -56,7 +56,7 @@ def is_alert_winter(alert, centerlat, centerlon, alert_geometry):
         snow_match = re.search(snow_pattern, description_text)
        # print(description_text)
         #print(snow_match)
-        if (station_temp <= 2.0) or (snow_match):
+        if (station_temp <= 2.0) or (snow_match) or alert_type == 'Snow Squall Warning':
             print(Fore.LIGHTBLUE_EX + 'WINTER: Using snow cmap' + Fore.RESET)
             return True
             #pefrom metar query with that many nearby stations, return the lists of each variable. 
