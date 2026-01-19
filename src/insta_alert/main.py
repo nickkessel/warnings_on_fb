@@ -452,7 +452,7 @@ def main():
                 except Exception as e:
                     print(Fore.RED + f"Error processing reference for {clickable_alert_id}: {e}" + Fore.RESET)
             
-            if ref_check_passed: #ref_check_passed
+            if ref_check_passed: #ref_check_passed, this is the final step before posting
                 print(Fore.LIGHTBLUE_EX + f"Processing graphics for {alert_verb} alert: {clickable_alert_id}" + Fore.RESET)
                 alert_path = f'{config.OUTPUT_DIR}/alert_{awips_id}_{clean_alert_id}.png'
                 properties = alert.get("properties", {})
@@ -488,16 +488,21 @@ def main():
                 except Exception as e:
                     print(Back.RED + f'CRITICAL ERROR during plotting of {alert_id}: {e}' + Back.RESET)
                     report_error(e, "some sort of error with posting/plotting alert polygon?")
-            #else: 
-             #   print("")
-                #print(Fore.YELLOW + f'Ref check failed, {clickable_alert_id} is a duplicate/downgrade. No plot.' + Fore.RESET)
-        gc.collect()
-        loop_counter += 1
-        if loop_counter % 10 == 0:
-            log_memory_breakdown()
-            
-        print(Fore.LIGHTCYAN_EX + f'End scan. {len(delayed_watches)} watches in queue. Rescan in {check_time}s' + Fore.RESET)
-        time.sleep(check_time)
+            else: 
+                print(Fore.YELLOW + f'Ref check failed, {clickable_alert_id} is a duplicate/downgrade. No plot.' + Fore.RESET)
+        try:    
+            gc.collect()
+            loop_counter += 1
+            if loop_counter % 10 == 0:
+                log_memory_breakdown()
+                
+            print(Fore.LIGHTCYAN_EX + f'End scan. {len(delayed_watches)} watches in queue. Rescan in {check_time}s' + Fore.RESET)
+            time.sleep(check_time)
+            print('sleep time over!')
+        except Exception as e:
+            print(Back.RED + f"ERROR in cleanup/sleep loop: {e}" + Back.RESET)
+            report_error(e, "Error in cleanup/sleep loop")
+            time.sleep(5)
 
 for folder in required_folders:
     print(f"checking for required folder: {folder}")
@@ -529,4 +534,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(Back.RED + f"Fatal error: {e}" + Back.RESET)
         report_error(e, context="Top-level main()")
-        raise  # optional — keeps the crash visible in logs
+        raise  #keeps the crash visible in logs
