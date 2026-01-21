@@ -9,7 +9,7 @@ cwd = Path(os.getcwd())
 env_path = cwd / ".env"
 load_dotenv(env_path)
 ALERT_TYPES_TO_MONITOR = (
-    ALL
+    'Special Weather Statement'
 )
 LOG_FILE = 'logs/posted_alerts_test4.log'
 # --- BOUNDING ZONES --- 
@@ -24,9 +24,12 @@ MMWX_ZONES = [
 EVERYWHERE = True #polls for all alerts, ignores the active_zones flag
 ACTIVE_ZONES = CINCY_ZONES #counties are w/ a C, marine zones w/ a Z
 
+# --- PREFS ---
+POST_ZONE_SPS = False #BOOL; gets kinda annoying, they are like by definition things not high enough priority to warrant the "real" thing, whether that be a DFA, WWA, etc. 
+
 # --- TARGETS ---
 # Set to True to enable posting, False to disable
-OUTPUT_DIR = 'graphics/live-test' #should be graphics/something
+OUTPUT_DIR = 'graphics/live-test2' #should be graphics/something
 POST_TO_FACEBOOK = False
 POST_TO_DISCORD = False #using tha new webhooks 
 POST_TO_INSTAGRAM_GRID = False

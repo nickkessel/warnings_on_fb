@@ -177,7 +177,7 @@ def get_hazard_details(alert, geom_type):
         # print("Additional rain:", additionalRain)
 
         #handle non-convective SPS                
-        if alert_type == 'Special Weather Statement' and geom_type == 'zone':
+        if alert_type == 'Special Weather Statement' and geom_type == 'zone' or geom_type == 'polygon':
             #print('regexing SPS for more infos')
             specific_hazard_found = False
             raw_desc = alert['properties'].get('description') or ''

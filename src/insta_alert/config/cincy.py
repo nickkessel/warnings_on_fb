@@ -26,6 +26,9 @@ MMWX_ZONES = [
 EVERYWHERE = False #polls for all alerts, ignores the active_zones flag
 ACTIVE_ZONES = CINCY_ZONES #counties are w/ a C, marine zones w/ a Z
 
+# --- PREFS ---
+POST_ZONE_SPS = False #BOOL; gets kinda annoying, they are like by definition things not high enough priority to warrant the "real" thing, whether that be a DFA, WWA, etc. 
+
 # --- TARGETS ---
 # Set to True to enable posting, False to disable
 OUTPUT_DIR = 'graphics/cincy' #should be graphics/something

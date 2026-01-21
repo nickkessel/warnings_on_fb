@@ -85,8 +85,17 @@ def get_nws_alerts(warning_types):
                 utc_dt = local_dt.astimezone(datetime.timezone.utc)
                 issuing_time = utc_dt.strftime("%m-%d %H:%Mz") #zulu time format
                 affected_zones = properties.get("geocode", {}).get("UGC", [])
+                geometry_type = ''
                 geometry = alert.get("geometry")
-
+                # if geometry is null then set as a zone type. else, if geometry isn't null, check type. if type == polygon, set as a polygon type
+                if geometry is None:
+                    geometry_type = 'zone'
+                elif geometry.get('type') == 'Polygon':
+                    geometry_type = 'polygon'
+                else:
+                    geometry_type = 'unknown'
+                    print('how is there an unknown geometry???? ')
+                    
                 def any_point_in_bbox(geo, bbox):
                     #check if any vertex of a polygon is inside the target box
                     if not geo or not geo.get('coordinates') or not geo['coordinates'][0]: #check for and skip empty geometries
@@ -111,8 +120,20 @@ def get_nws_alerts(warning_types):
                             #print('alert not in target zones')
                             return False
                     
+                def sps_zone_check(alert_type, geometry_type):
+                    if alert_type == 'Special Weather Statement':
+                        if geometry_type == 'zone' and config.POST_ZONE_SPS:
+                            return True
+                        elif geometry_type == 'zone' and config.POST_ZONE_SPS == False:
+                            #print('sps zone check fail')
+                            return False
+                        elif geometry_type == 'polygon' or geometry_type == 'unknown':
+                            return True
+                    else:
+                        return True
+                
                 target_zones_set = set(config.ACTIVE_ZONES)
-                if event_type in warning_types and county_in_selected(affected_zones, target_zones_set): # and any_point_in_bbox(geometry, config.ACTIVE_BBOX) :
+                if event_type in warning_types and county_in_selected(affected_zones, target_zones_set) and sps_zone_check(event_type, geometry_type): # and any_point_in_bbox(geometry, config.ACTIVE_BBOX) :
                     print("Matching alert found: " + Fore.YELLOW + f"{event_type} - " + Fore.MAGENTA + f"{issuing_office}" + Fore.RESET + f" at {issuing_time}")
                     filtered_alerts.append(alert)
                 #else:
@@ -498,7 +519,7 @@ def main():
                 
             print(Fore.LIGHTCYAN_EX + f'End scan. {len(delayed_watches)} watches in queue. Rescan in {check_time}s' + Fore.RESET)
             time.sleep(check_time)
-            print('sleep time over!')
+            #print('sleep time over!')
         except Exception as e:
             print(Back.RED + f"ERROR in cleanup/sleep loop: {e}" + Back.RESET)
             report_error(e, "Error in cleanup/sleep loop")
