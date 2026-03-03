@@ -328,7 +328,7 @@ def check_if_alert_is_valid(alert):
             return False
             
     # FFW/FFS cancellation check (if detection source is n/a, it's a cancellation)
-    if awips_id.startswith("FF"):
+    if awips_id.startswith("FFW") or awips_id.startswith("FFS"):
         flood_detection = properties['parameters'].get('flashFloodDetection', ['n/a'])[0]
         if flood_detection == "n/a":
             print(Fore.RED + f"Check failed, FFW expired or cancelled: {clickable_alert_id}" + Fore.RESET)

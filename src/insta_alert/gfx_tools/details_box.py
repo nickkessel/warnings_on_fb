@@ -104,7 +104,7 @@ def get_hazard_details(alert, geom_type):
                         print('could not parse hail size from description')
                         
         #handle flood related things, so rain amts and mudslides
-        if alert_type in ['Flash Flood Warning', 'Flood Advisory']:
+        if alert_type in ['Flash Flood Warning', 'Flood Advisory', 'Flood Watch', 'Flash Flood Watch']:
             # Normalize the text: collapse newlines/tabs/multiple spaces into single spaces
             raw_desc = alert['properties'].get('description', '')
             description_text = ' '.join(raw_desc.split()).lower()
