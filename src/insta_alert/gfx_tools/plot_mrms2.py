@@ -19,6 +19,7 @@ from requests.exceptions import RequestException
 from http.client import IncompleteRead
 import tempfile
 import gc
+import sys
 #from datetime import datetime
 
 #DONE: fix scaling/distortion of the colorbar/legend
@@ -347,6 +348,9 @@ def _fetch_mrms_grid(url, bbox, convert_units=False):
             
         ds = xr.open_dataset(tmp_path, engine='cfgrib', backend_kwargs={'decode_timedelta': False})
         ds.load()
+        kb1 = sys.getsizeof(ds) / (1024)
+        kb = kb1
+        print(f'kb used for radar (plot_mrms): {kb:.2f}')
 
         if convert_units:
             ds['unknown'] = ds['unknown'] / 25.4

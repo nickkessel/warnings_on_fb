@@ -1,4 +1,5 @@
 #using this as like a test thing
+import sys
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -19,8 +20,9 @@ from insta_alert.gfx_tools.plot_mrms2 import get_mrms_data_async
 from timezonefinderL import TimezoneFinder
 import gc
 import json
-from insta_alert.config_manager import config #diasble for testing w/ just this script
+from insta_alert.config_manager import config 
 from insta_alert.utils.constants import ALERT_COLORS
+from insta_alert.utils.version_number import get_local_version
 from .details_box import get_hazard_details #these can all be RELATIVE imports bc they are all in gfx_tools.
 from .get_alert_geometry import get_alert_geometry
 from .winter_product import is_alert_winter
@@ -53,10 +55,12 @@ ZORDER STACK
 5 - city/town names
 7 - UI elements (issued time, logo, colorbar, radar time, hazards box, pdsbox)
 '''
-try:    
-    VERSION_NUMBER = importlib.metadata.version('insta-alert') #Major version (dk criteria for this) Minor version (pushes to stable branch) Feature version (each push to dev branch)
+try: 
+    VERSION_NUMBER =  get_local_version() #get from local file first, if not there get from most recent install. if not there use hard coded fallback
+    if VERSION_NUMBER is None:
+        VERSION_NUMBER = importlib.metadata.version('insta-alert') #Major version (dk criteria for this) Minor version (pushes to stable branch) Feature version (each push to dev branch)
 except importlib.metadata.PackageNotFoundError:
-    VERSION_NUMBER = '0.8.16'
+    VERSION_NUMBER = '0.8.23'
     
 print(Back.BLUE + f'Running graphics v{VERSION_NUMBER}' + Back.RESET)
 
@@ -311,6 +315,10 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
                 use_snow_cmap = False
                 
             subset, flag_subset, cmap, vmin, vmax, cbar_label, radar_valid_time = get_mrms_data_async(map_region2, alert_type, region, use_snow_cmap)
+            kb1 = sys.getsizeof(subset) / (1024)
+            kb2 = sys.getsizeof(flag_subset) / (1024)
+            kb = kb1 + kb2
+            print(f'kb used for radar: {kb:.2f}')
             #print(subset.unknown.size)
             #directly plot the MRMS data onto the main axes (and colorbar, seperately)
             if subset is not None and subset.unknown.size > 0:
@@ -684,7 +692,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         gc.collect()
 
 if __name__ == '__main__': 
-    with open('test_json/test_wwa_for_zone_border_simplify.json', 'r') as file: 
+    with open('test_alerts/spstesttext.json', 'r') as file: 
         print(Back.YELLOW + Fore.BLACK + 'testing mode! (local files)' + Style.RESET_ALL)
         test_alert = json.load(file) 
-    plot_alert_polygon(test_alert, 'graphics/live-test/test/simplify_geom_0d02.jpg', False, 'issued')
+    plot_alert_polygon(test_alert, 'graphics/test/foggingit.jpg', False, 'issued')

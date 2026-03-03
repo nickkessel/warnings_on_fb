@@ -1,4 +1,5 @@
 import re
+import sys
 import json
 from colorama import Fore, Back
 import textwrap
@@ -64,6 +65,8 @@ def get_hazard_details(alert, geom_type):
         totalSnow = 'n/a'
         additionalSnow = 'n/a'
         locallyHigher = 'n/a'
+        #dense fogs
+        visibility = 'n/a'
 
         #watch getting
         watch_attribs, watch_percents = ['n/a', 'n/a', 'n/a', 'n/a', 'n/a', 'n/a'], ['n/a', 'n/a', 'n/a', 'n/a', 'n/a', 'n/a']  #default to these
@@ -177,7 +180,8 @@ def get_hazard_details(alert, geom_type):
         # print("Additional rain:", additionalRain)
 
         #handle non-convective SPS                
-        if alert_type == 'Special Weather Statement' and geom_type == 'zone' or geom_type == 'polygon':
+        if alert_type == 'Special Weather Statement' and geom_type == 'zone':# or geom_type == 'polygon' //no clue why this was in here bc why would you want to add polygon alerts as those are usually 
+                #convective ??!! idk but i also wrote that logic wrong and it was doing the addl' headline for every polygon alert which is bad
             #print('regexing SPS for more infos')
             specific_hazard_found = False
             raw_desc = alert['properties'].get('description') or ''
@@ -272,7 +276,9 @@ def get_hazard_details(alert, geom_type):
                     additionalHazard = 'See Statement for Details'
                     
         if alert_type == 'Dense Fog Advisory':
-            denseFogThreat = 'Likely'
+            denseFogThreat = 'Widespread'
+            visibility = '1/4'
+            
         
         if alert_type in ['High Wind Warning', 'Wind Advisory']:
             raw_desc = alert['properties'].get('description', '')
@@ -302,7 +308,7 @@ def get_hazard_details(alert, geom_type):
             ('Snow Squall', snowSquallDetection, ''),
             ('Flash Flood', floodDetection, ''),
             ('Risk of Fire Weather', fireWeatherThreat, ''),
-            ('Fog Development', denseFogThreat, ''),
+            ('Fog', denseFogThreat, ''),
             ('Icy Conditions', iceThreat, ''),
             ('Tornado Probability', torProb, ''),
             ('Sig. Tornado Probability', sigTorProb, ''),
@@ -317,7 +323,8 @@ def get_hazard_details(alert, geom_type):
             ('Locally Higher Snow', locallyHigher, ''),
             ('Hazard', additionalHazard, ''),
             ('Max. Sustained Wind', hwwWind, ' MPH'), #seperate ones from the normal winds 
-            ('Max. Wind Gusts', hwwGust, ' MPH')
+            ('Max. Wind Gusts', hwwGust, ' MPH'),
+            ('Visibility', visibility, 'mi')
         ]
         
         details_text_lines = []
@@ -370,6 +377,8 @@ def get_hazard_details(alert, geom_type):
                 # default append for all non-Hazard items
                 details_text_lines.append(f"{label}: {formatted_string}")
         print(Fore.LIGHTBLUE_EX + "Successfully scanned alert text for attributes." + Fore.RESET)
+       # kb = sys.getsizeof(details_text_lines) / (1024)
+        #print(f'kb used: {kb:.2f}')
         return details_text_lines, torSeverity, tStormSeverity, floodSeverity, torDetection, waterspoutDetection
     except Exception as e:
         print(Back.RED + f"Error using Regex to get details_text!! {e}" + Back.RESET)
