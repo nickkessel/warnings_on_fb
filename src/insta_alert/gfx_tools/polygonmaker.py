@@ -22,7 +22,7 @@ import gc
 import json
 from insta_alert.config_manager import config 
 from insta_alert.utils.constants import ALERT_COLORS
-from insta_alert.utils.version_number import get_local_version
+#from insta_alert.utils.version_number import get_local_version
 from .details_box import get_hazard_details #these can all be RELATIVE imports bc they are all in gfx_tools.
 from .get_alert_geometry import get_alert_geometry
 from .winter_product import is_alert_winter
@@ -56,7 +56,8 @@ ZORDER STACK
 7 - UI elements (issued time, logo, colorbar, radar time, hazards box, pdsbox)
 '''
 try: 
-    VERSION_NUMBER =  get_local_version() #get from local file first, if not there get from most recent install. if not there use hard coded fallback
+    VERSION_NUMBER = None
+    #VERSION_NUMBER =  get_local_version() #get from local file first, if not there get from most recent install. if not there use hard coded fallback
     if VERSION_NUMBER is None:
         VERSION_NUMBER = importlib.metadata.version('insta-alert') #Major version (dk criteria for this) Minor version (pushes to stable branch) Feature version (each push to dev branch)
 except importlib.metadata.PackageNotFoundError:
