@@ -693,7 +693,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         gc.collect()
 
 if __name__ == '__main__': 
-    with open('test_alerts/spstesttext.json', 'r') as file: 
+    with open('test_alerts/flood_warning.json', 'r') as file: 
         print(Back.YELLOW + Fore.BLACK + 'testing mode! (local files)' + Style.RESET_ALL)
         test_alert = json.load(file) 
-    plot_alert_polygon(test_alert, 'graphics/test/foggingit.jpg', False, 'issued')
+    plot_alert_polygon(test_alert, 'graphics/test/flood.jpg', False, 'issued')

@@ -58,6 +58,7 @@ def get_hazard_details(alert, geom_type):
         #flood stuff
         rainFallen = 'n/a'
         additionalRain = 'n/a'
+        riverFlood = 'n/a'
         #high wind warnings/wind advisories
         hwwWind = 'n/a'
         hwwGust = 'n/a'
@@ -279,6 +280,8 @@ def get_hazard_details(alert, geom_type):
             denseFogThreat = 'Widespread'
             visibility = '1/4'
             
+        if alert_type == 'Flood Warning':
+            riverFlood = 'Likely'
         
         if alert_type in ['High Wind Warning', 'Wind Advisory']:
             raw_desc = alert['properties'].get('description', '')
@@ -324,7 +327,8 @@ def get_hazard_details(alert, geom_type):
             ('Hazard', additionalHazard, ''),
             ('Max. Sustained Wind', hwwWind, ' MPH'), #seperate ones from the normal winds 
             ('Max. Wind Gusts', hwwGust, ' MPH'),
-            ('Visibility', visibility, 'mi')
+            ('Visibility', visibility, 'mi'),
+            ('River Flooding', riverFlood, '')
         ]
         
         details_text_lines = []

@@ -7,7 +7,7 @@ env_path = cwd / ".env"
 load_dotenv(env_path)
 # ---- ALERT TYPES ----
 SEVERE = ['Tornado Warning', 'Severe Thunderstorm Warning', 'Flash Flood Warning']
-OTHER = ['Special Weather Statement', 'Flood Advisory', 'Special Marine Warning', 'Dust Storm Warning', 'Dense Fog Advisory', 'High Wind Warning', 'Red Flag Warning', 'Wind Advisory']
+OTHER = ['Special Weather Statement', 'Flood Advisory', 'Flood Warning', 'Special Marine Warning', 'Dust Storm Warning', 'Dense Fog Advisory', 'High Wind Warning', 'Red Flag Warning', 'Wind Advisory']
 WINTER = ['Winter Storm Warning', 'Frost Advisory', 'Freeze Warning', 'Snow Squall Warning', 'Winter Weather Advisory','Lake Effect Snow Warning', 'Blizzard Warning', 'Winter Storm Watch']
 WATCHES = ['Tornado Watch', 'Severe Thunderstorm Watch', 'Flood Watch', 'Flash Flood Watch']
 
@@ -129,6 +129,11 @@ ALERT_COLORS = {
     'Winter Weather Advisory': {
         'facecolor': "#8875F0",
         'edgecolor': "#755EF5",
+        'fillalpha': '50'
+    },
+    'Flood Warning': {
+        'facecolor': "#00FF00",
+        'edgecolor': "#00CD00",
         'fillalpha': '50'
     },
     "default": {
