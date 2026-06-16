@@ -669,11 +669,19 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         else: 
             punc = "."
         statement = f'''{alert_type} {alert_verb}, including {area_desc}{punc} This alert is in effect until {formatted_end_time}{punc}\n{desc} '''
-        try: #handles if there isn't a config file
-            if config.USE_TAGS:
-                statement += config.DEFAULT_TAGS
-        except Exception as e:
-            print(Fore.YELLOW + f"No config file found, or no tags defined: {e}. Not using tags." + Fore.RESET)
+        #Max caption link for Discord is 2000 chars. Seems like a reasonable max for all platforms. This is really only a probably w/ watches, where they list 10 trillion places.
+        if len(statement) >= 2000:
+            statement = statement[:1910]
+            statement += '[Message truncated due to platform requirements. View the entire text at weather.gov]'
+        else: 
+            try: #handles if there isn't a config file
+                if config.USE_TAGS:
+                    statement += config.DEFAULT_TAGS
+            except Exception as e:
+                print(Fore.YELLOW + f"No config file found, or no tags defined: {e}. Not using tags." + Fore.RESET)
+            
+        #print(f'Statement is {len(statement)} characters')
+
 
         #print(statement)
         elapsed_plot_time = time.time() - plot_start_time
@@ -687,13 +695,13 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
         return None, None
     finally:
         if fig:
-            print('yes fig')
+            #print('yes fig')
             plt.close(fig) #hey dipshit dont comment this out 
         plt.close('all')
         gc.collect()
 
 if __name__ == '__main__': 
-    with open('test_alerts/flood_warning.json', 'r') as file: 
+    with open('test_json/svr.json', 'r') as file: 
         print(Back.YELLOW + Fore.BLACK + 'testing mode! (local files)' + Style.RESET_ALL)
         test_alert = json.load(file) 
-    plot_alert_polygon(test_alert, 'graphics/test/flood.jpg', False, 'issued')
+    plot_alert_polygon(test_alert, 'graphics/live-test2/testwords.jpg', False, 'issued')

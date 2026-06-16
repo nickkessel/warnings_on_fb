@@ -92,9 +92,12 @@ def get_nws_alerts(warning_types):
                     geometry_type = 'zone'
                 elif geometry.get('type') == 'Polygon':
                     geometry_type = 'polygon'
+                elif geometry.get('type') == 'MultiPolygon':
+                    geometry_type = 'multipolygon'
                 else:
                     geometry_type = 'unknown'
-                    print('how is there an unknown geometry???? ')
+                    print('how is there an unknown geometry???? (probably MultiPolygon)')
+                    print(f'Issued by {issuing_office} at {issuing_time}z for zones {affected_zones}')
                     
                 def any_point_in_bbox(geo, bbox):
                     #check if any vertex of a polygon is inside the target box
@@ -127,7 +130,7 @@ def get_nws_alerts(warning_types):
                         elif geometry_type == 'zone' and config.POST_ZONE_SPS == False:
                             #print('sps zone check fail')
                             return False
-                        elif geometry_type == 'polygon' or geometry_type == 'unknown':
+                        elif geometry_type == 'polygon' or geometry_type == 'unknown' or geometry_type == 'multipolygon':
                             return True
                     else:
                         return True

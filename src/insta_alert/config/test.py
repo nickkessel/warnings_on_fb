@@ -9,7 +9,7 @@ cwd = Path(os.getcwd())
 env_path = cwd / ".env"
 load_dotenv(env_path)
 ALERT_TYPES_TO_MONITOR = (
-    'Flood Watch', 'Flood Warning'
+    ALL
 )
 LOG_FILE = 'logs/posted_alerts_test4.log'
 # --- BOUNDING ZONES --- 
@@ -27,7 +27,7 @@ EVERYWHERE = False #polls for all alerts, ignores the active_zones flag
 ACTIVE_ZONES = CINCY_ZONES #counties are w/ a C, marine zones w/ a Z
 
 # --- PREFS ---
-POST_ZONE_SPS = False #BOOL; gets kinda annoying, they are like by definition things not high enough priority to warrant the "real" thing, whether that be a DFA, WWA, etc. 
+POST_ZONE_SPS = True #BOOL; gets kinda annoying, they are like by definition things not high enough priority to warrant the "real" thing, whether that be a DFA, WWA, etc. 
 
 # --- TARGETS ---
 # Set to True to enable posting, False to disable
