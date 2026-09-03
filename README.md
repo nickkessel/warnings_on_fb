@@ -8,7 +8,7 @@
 1. Scrapes the publicly-facing [NWS alerts api](https://api.weather.gov/alerts/active) for chosen alerts in a chosen bounding box (see [supported alerts](#supported-alerts) and [areas](#supported-areas) for more info)
 2. Generates a polygon from the alert geometry
 3. Uses open-source GIS tools to add in US highways, interstates, county/state borders, and city names onto the selected map area. 
-4. Polls the NCEP MRMS server (unless a recent cached scan is available) and downloads the latest reflectivity (default) or 1hr-QPE (FFW, FFA) data, and overlays that onto the map, for better context. 
+4. Overlays radar context using nearest-site NEXRAD Level II, Level III, or NCEP MRMS. Level II supplies high-resolution base reflectivity; Level III supplies derived hydrometeor classification and one-hour rainfall products. If the selected NEXRAD source is unavailable, stale, or out of range, the program automatically falls back to MRMS.
 5. After the graphic is generated, it can go to any number of end users. Currently supported are sending to a Facebook page and/or Discord server. Instagram posting is possible, but not available at-scale/for more than a metro-area or two worth of alerts. Also included in the download is the `slideshow.py` file, which uses `pygame` to create an auto-updating slideshow with all active alerts.
 
 ## Supported Alerts:
@@ -46,6 +46,8 @@
 - create a new virtual environment
 - activate the virtual environment
 - duplicate an existing config file, adjust settings to your domain/needs, set warnings to target
+- set `USE_NEXRAD = "LEVEL2"` or `"LEVEL3"` to select nearest-site NEXRAD radar; set it to `False` for MRMS
+- set `NEXRAD_SMOOTHING = True` to lightly smooth plotted Level II/III fields; this setting does not affect MRMS
 - create a .env with a FACEBOOK_PAGE_ACCESS_TOKEN, FACEBOOK_PAGE_ID, IG_USER, IG_PASS, if you want alerts to be sent to those places
 - rename the config file to something relevant to your use, keep it in the /configs folder.
 - run  `python -m insta_alert.main --config {YOUR_CONFIG_NAME}`

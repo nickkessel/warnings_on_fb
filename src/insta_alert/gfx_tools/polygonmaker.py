@@ -16,7 +16,7 @@ import matplotlib.font_manager as fm
 import geopandas as gpd
 import time
 from colorama import Back, Fore, Style
-from insta_alert.gfx_tools.plot_mrms2 import get_mrms_data_async
+from insta_alert.gfx_tools.plot_nexrad import get_radar_data, smooth_nexrad_field
 from timezonefinderL import TimezoneFinder
 import gc
 import json
@@ -315,24 +315,42 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
                 print(Fore.RED + f"Error checking for winter product! {e}" + Fore.RESET)
                 use_snow_cmap = False
                 
-            subset, flag_subset, cmap, vmin, vmax, cbar_label, radar_valid_time = get_mrms_data_async(map_region2, alert_type, region, use_snow_cmap)
+            radar_result = get_radar_data(
+                map_region2,
+                alert_type,
+                region,
+                use_snow_cmap,
+                use_nexrad=config.USE_NEXRAD,
+                center_lat=centerlat,
+                center_lon=centerlon,
+            )
+            subset, flag_subset, cmap, vmin, vmax, cbar_label, radar_valid_time = radar_result
+            smooth_nexrad = (
+                config.NEXRAD_SMOOTHING
+                and subset is not None
+                and subset.attrs.get('radar_source') in {'level2', 'level3'}
+            )
+            radar_field = subset.unknown if subset is not None else None
+            if smooth_nexrad:
+                radar_field = smooth_nexrad_field(radar_field)
+                print("Radar: applying NEXRAD field smoothing")
             kb1 = sys.getsizeof(subset) / (1024)
             kb2 = sys.getsizeof(flag_subset) / (1024)
             kb = kb1 + kb2
             print(f'kb used for radar: {kb:.2f}')
             #print(subset.unknown.size)
-            #directly plot the MRMS data onto the main axes (and colorbar, seperately)
+            #directly plot the radar data onto the main axes (and colorbar, separately)
             if subset is not None and subset.unknown.size > 0:
                 if flag_subset is not None:
-                    print("MRMS: applying ptype mask")
+                    print("Radar: applying ptype mask")
                     flag_subset = flag_subset.interp_like(subset, method = 'nearest')
                     
                     is_snow = flag_subset.unknown.isin([3,4]) #(flag_subset.unknown == 4) #codes from the flag table: https://github.com/NOAA-National-Severe-Storms-Laboratory/mrms-support/blob/main/GRIB2_TABLES/UserTable_MRMS_PrecipFlags.csv
                     is_rain = (~is_snow) & (flag_subset.unknown > 0) # or (flag_subset.unknown == 6) or (flag_subset.unknown == 7) or (flag_subset.unknown == 10) or (flag_subset.unknown == 91) or (flag_subset.unknown == 96) 
                     #what i want to do is only plot the snow cbar if theres only snow, so check if the rain subset "rain_data" is empty, then dont draw the rain colorbar. Will probably need to add a mask for just snow, so 
                         #flag codes 1,6,7,10,91,96
-                    rain_data = subset.unknown.where(is_rain)  #not "is snow", and isn't "nothing"
-                    snow_data = subset.unknown.where(is_snow)
+                    rain_data = radar_field.where(is_rain)  #not "is snow", and isn't "nothing"
+                    snow_data = radar_field.where(is_snow)
                     
                     has_rain = rain_data.count().item() > 0
                     has_snow = snow_data.count().item() > 0
@@ -340,7 +358,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
                     
                     from insta_alert.gfx_tools.plot_mrms2 import snow_cmap
                     if has_rain and not has_snow:
-                        print(Fore.LIGHTBLUE_EX + 'MRMS: Using rain colorbar (no snow)' + Fore.RESET)
+                        print(Fore.LIGHTBLUE_EX + 'Radar: Using rain colorbar (no snow)' + Fore.RESET)
                         im = ax.pcolormesh(
                             subset.longitude, subset.latitude, rain_data, transform = ccrs.PlateCarree(),
                             cmap = cmap, vmin=vmin, vmax=vmax, zorder = 1
@@ -362,7 +380,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
                             label.set_fontweight('heavy')
 
                     elif not has_rain and has_snow:
-                        print(Fore.LIGHTBLUE_EX + 'MRMS: Using snow colorbar (no rain)' + Fore.RESET)
+                        print(Fore.LIGHTBLUE_EX + 'Radar: Using snow colorbar (no rain)' + Fore.RESET)
                         im = ax.pcolormesh(
                             subset.longitude, subset.latitude, snow_data, transform = ccrs.PlateCarree(),
                             cmap = snow_cmap, vmin=0, vmax=40, zorder = 1 #use 0 and 40 as thats the bounds of the snow cmap which is seperate from rain
@@ -384,7 +402,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
                             label.set_fontweight('heavy')
                             
                     elif has_rain and has_snow:
-                        print(Fore.LIGHTBLUE_EX + 'MRMS: Using both snow/rain colorbar' + Fore.RESET)
+                        print(Fore.LIGHTBLUE_EX + 'Radar: Using both snow/rain colorbar' + Fore.RESET)
                         #plot rain:
                         im = ax.pcolormesh(
                             subset.longitude, subset.latitude, rain_data, transform = ccrs.PlateCarree(),
@@ -424,7 +442,7 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
                 else:
                     #default plotting with just rain ("classic")
                     im = ax.pcolormesh(
-                        subset.longitude, subset.latitude, subset.unknown, transform = ccrs.PlateCarree(),
+                        subset.longitude, subset.latitude, radar_field, transform = ccrs.PlateCarree(),
                         cmap = cmap, vmin=vmin, vmax=vmax, zorder = 1
                     )
 
@@ -452,9 +470,9 @@ def plot_alert_polygon(alert, output_path, mrms_plot, alert_verb):
                     del flag_subset
                 
             else:
-                print(Fore.RED + "MRMS ERROR: no data returned from get_mrms_data" + Fore.RESET)
+                print(Fore.RED + "RADAR ERROR: no data returned from Level III or MRMS" + Fore.RESET)
         else:
-            print('not plotting MRMS (recieved plot_mrms = False.)')
+            print('not plotting radar (received plot_mrms = False.)')
         
         #filter for only cities in map view
         visible_cities_df = cities_ds[
