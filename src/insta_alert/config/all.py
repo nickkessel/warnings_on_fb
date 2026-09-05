@@ -28,6 +28,8 @@ ACTIVE_ZONES = MMWX_ZONES #counties are w/ a C, marine zones w/ a Z
 
 # --- PREFS ---
 POST_ZONE_SPS = False #BOOL; gets kinda annoying, they are like by definition things not high enough priority to warrant the "real" thing, whether that be a DFA, WWA, etc. 
+USE_NEXRAD = "LEVEL2"  # "LEVEL2", "LEVEL3", or False for MRMS
+NEXRAD_SMOOTHING = False
 
 # --- TARGETS ---
 # Set to True to enable posting, False to disable
